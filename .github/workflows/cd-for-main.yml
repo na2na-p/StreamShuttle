@@ -1,0 +1,89 @@
+name: "CD for main"
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app-ci:
+    uses: ./.github/workflows/app-ci.yml
+    secrets: inherit
+
+  build-and-push:
+    needs: app-ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      image_tag: ${{ steps.output_tags.outputs.image_tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to registry.na2na.dev
+        run: |
+          echo "${{ secrets.REGISTRY_NA2NA_DEV_BOT_KEY }}" | docker login registry.na2na.dev -u 'robot$streamshuttle+github-actions' --password-stdin
+
+      - name: Build and push Docker image
+        run: |
+          # Use regular docker build + push (buildx has auth issues with registry.na2na.dev)
+          docker build --platform linux/arm64 \
+            --target production \
+            -t registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA \
+            .
+          docker push registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA
+
+          # Tag and push latest image
+          docker tag registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA registry.na2na.dev/applications/streamshuttle:latest
+          docker push registry.na2na.dev/applications/streamshuttle:latest
+
+      - name: Output image tags
+        id: output_tags
+        run: |
+          echo "image_tag=$GITHUB_SHA" >> $GITHUB_OUTPUT
+
+          echo "## 🐳 ビルド済みDockerイメージ" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| タグ | イメージURI |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|-----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| \`$GITHUB_SHA\` | \`registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`latest\` | \`registry.na2na.dev/applications/streamshuttle:latest\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 イメージ詳細" >> $GITHUB_STEP_SUMMARY
+          echo "- **プラットフォーム**: linux/arm64" >> $GITHUB_STEP_SUMMARY
+          echo "- **ベースイメージ**: python:3.14.0-slim" >> $GITHUB_STEP_SUMMARY
+          echo "- **コミット**: $GITHUB_SHA" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 プルコマンド" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA" >> $GITHUB_STEP_SUMMARY
+          echo "# または" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull registry.na2na.dev/applications/streamshuttle:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  display-results:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Display Deploy Results
+        run: |
+          echo "## 🚀 デプロイ結果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.build-and-push.result }}" = "success" ]; then
+            echo "✅ **イメージビルド**: 正常に完了しました" >> $GITHUB_STEP_SUMMARY
+            echo "   - イメージタグ: \`${{ needs.build-and-push.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "   - イメージURI: \`registry.na2na.dev/applications/streamshuttle:${{ needs.build-and-push.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **イメージビルド**: 失敗しました" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**全体ステータス**: ${{ needs.build-and-push.result }}" >> $GITHUB_STEP_SUMMARY

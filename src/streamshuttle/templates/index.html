@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="download-section">
+  <form id="download-form">
+    <label for="url-input">YouTube動画URL:</label>
+    <input
+      type="url"
+      id="url-input"
+      name="url"
+      placeholder="https://www.youtube.com/watch?v=..."
+      required
+    >
+    <button type="button" id="fetch-formats-btn">フォーマット取得</button>
+  </form>
+
+  <div id="error-message" class="error hidden"></div>
+
+  <div id="video-info-container" class="hidden">
+    <div class="video-info">
+      <img id="video-thumbnail" alt="動画サムネイル" class="video-thumbnail">
+      <div class="video-details">
+        <h2 id="video-title"></h2>
+        <p id="video-id" class="video-id"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="formats-container" class="hidden">
+    <h2>利用可能なフォーマット:</h2>
+
+    <!-- カラー凡例 -->
+    <div class="format-legend">
+      <span class="legend-item">
+        <span class="legend-color format-audio-video"></span>
+        <span class="legend-label">音声+動画</span>
+      </span>
+      <span class="legend-item">
+        <span class="legend-color format-video-only"></span>
+        <span class="legend-label">動画のみ</span>
+      </span>
+      <span class="legend-item">
+        <span class="legend-color format-audio-only"></span>
+        <span class="legend-label">音声のみ</span>
+      </span>
+    </div>
+
+    <div id="formats-list"></div>
+  </div>
+
+  <div id="download-container" class="hidden">
+    <button id="download-btn">ダウンロード</button>
+  </div>
+</section>
+{% endblock %}

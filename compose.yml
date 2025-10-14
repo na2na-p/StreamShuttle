@@ -1,0 +1,46 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: streamshuttle-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+      - /app/.venv
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - LOG_FORMAT=json
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src
+      - CSRF_SECRET_KEY=your-secret-key-here-please-change-this-to-random-string
+    depends_on:
+      - redis
+    develop:
+      watch:
+        - action: sync
+          path: ./app
+          target: /app/app
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+        - action: rebuild
+          path: ./pyproject.toml
+        - action: rebuild
+          path: ./uv.lock
+
+  redis:
+    image: redis:7-alpine
+    container_name: streamshuttle-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  redis-data:
