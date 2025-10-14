@@ -56,9 +56,7 @@ class ResolvedUrl:
 
         # HTTP/HTTPSスキームを持つことを検証
         if parsed.scheme not in ("http", "https"):
-            raise InvalidUrlError(
-                f"URLはHTTP/HTTPSスキームを持つ必要があります: {self._value}"
-            )
+            raise InvalidUrlError(f"URLはHTTP/HTTPSスキームを持つ必要があります: {self._value}")
 
         # ネットロケーション（ホスト）が存在することを検証
         if not parsed.netloc:

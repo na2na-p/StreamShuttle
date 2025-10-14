@@ -16,10 +16,7 @@ class Config(BaseSettings):
     Pydantic BaseSettingsを使用して、型安全な設定管理を実現します。
     """
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     REDIS_HOST: str = "localhost"
     """Redis接続ホスト名（デフォルト: localhost）"""
@@ -48,7 +45,7 @@ class Config(BaseSettings):
     本番環境では同一オリジンポリシーを活かし、この設定は空のままにすることを推奨します。
     """
 
-    @field_validator('ALLOWED_ORIGINS', mode='before')
+    @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def parse_allowed_origins(cls, v: str | list[str]) -> list[str]:
         """
@@ -64,7 +61,7 @@ class Config(BaseSettings):
             list[str]: オリジンのリスト
         """
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(',') if origin.strip()]
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 
     RATE_LIMIT_RESOLVE: str = "10/minute"
@@ -90,8 +87,8 @@ class Config(BaseSettings):
     - ログファイル肥大化攻撃
     """
 
-    CSRF_SECRET_KEY: str = "your-secret-key-change-in-production"
-    """CSRFトークン署名用の秘密鍵（本番環境では環境変数から設定すること）"""
+    CSRF_SECRET_KEY: str
+    """CSRFトークン署名用の秘密鍵（環境変数CSRF_SECRET_KEYから取得、必須）"""
 
     CSRF_TOKEN_EXPIRY_SECONDS: int = 600
     """CSRFトークンの有効期限（秒）（デフォルト: 600秒 = 10分）"""

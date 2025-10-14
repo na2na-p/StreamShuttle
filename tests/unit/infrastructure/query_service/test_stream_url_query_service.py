@@ -40,9 +40,7 @@ def query_service(mock_redis_dao):
     return StreamUrlQueryService(redis_dao=mock_redis_dao)
 
 
-async def test_stream_url_query_service_find_by_video_id_returns_dto(
-    query_service, mock_redis_dao
-):
+async def test_stream_url_query_service_find_by_video_id_returns_dto(query_service, mock_redis_dao):
     """
     正常系: StreamUrlQueryService.find_by_video_id()がキャッシュが存在する場合に
     StreamUrlDtoを返すことを確認

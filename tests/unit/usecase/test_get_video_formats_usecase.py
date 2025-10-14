@@ -37,18 +37,24 @@ class TestGetVideoFormatsUseCase:
                 quality="1080p",
                 codec="avc1",
                 url="https://example.com/format137.mp4",
+                has_audio=False,
+                has_video=True,
             ),
             VideoFormatDto(
                 format_id="248",
                 quality="1080p",
                 codec="vp9",
                 url="https://example.com/format248.webm",
+                has_audio=False,
+                has_video=True,
             ),
             VideoFormatDto(
                 format_id="136",
                 quality="720p",
                 codec="avc1",
                 url="https://example.com/format136.mp4",
+                has_audio=False,
+                has_video=True,
             ),
         ]
         mock_query_service.get_available_formats.return_value = expected_formats
@@ -101,6 +107,8 @@ class TestGetVideoFormatsUseCase:
                 quality="720p",
                 codec="avc1",
                 url="https://example.com/format22.mp4",
+                has_audio=False,
+                has_video=True,
             ),
         ]
         mock_query_service.get_available_formats.return_value = expected_formats

@@ -26,11 +26,7 @@ def test_video_format_creation_with_valid_parameters():
     codec = Codec(_value="h264")
 
     # Act
-    video_format = VideoFormat(
-        _format_id=format_id,
-        _quality=quality,
-        _codec=codec
-    )
+    video_format = VideoFormat(_format_id=format_id, _quality=quality, _codec=codec)
 
     # Assert
     assert video_format.format_id == format_id
@@ -51,11 +47,7 @@ def test_video_format_properties_are_accessible():
     format_id = FormatId(_value="248")
     quality = Quality(_value="1080p")
     codec = Codec(_value="vp9")
-    video_format = VideoFormat(
-        _format_id=format_id,
-        _quality=quality,
-        _codec=codec
-    )
+    video_format = VideoFormat(_format_id=format_id, _quality=quality, _codec=codec)
 
     # Act & Assert
     assert video_format.format_id.value == "248"
@@ -78,7 +70,7 @@ def test_video_format_immutability():
     video_format = VideoFormat(
         _format_id=FormatId(_value="137"),
         _quality=Quality(_value="1080p"),
-        _codec=Codec(_value="h264")
+        _codec=Codec(_value="h264"),
     )
 
     # Act & Assert
@@ -101,16 +93,8 @@ def test_video_format_equality():
     quality = Quality(_value="1080p")
     codec = Codec(_value="h264")
 
-    video_format_1 = VideoFormat(
-        _format_id=format_id,
-        _quality=quality,
-        _codec=codec
-    )
-    video_format_2 = VideoFormat(
-        _format_id=format_id,
-        _quality=quality,
-        _codec=codec
-    )
+    video_format_1 = VideoFormat(_format_id=format_id, _quality=quality, _codec=codec)
+    video_format_2 = VideoFormat(_format_id=format_id, _quality=quality, _codec=codec)
 
     # Act & Assert
     assert video_format_1 == video_format_2
@@ -128,12 +112,12 @@ def test_video_format_inequality():
     video_format_1 = VideoFormat(
         _format_id=FormatId(_value="137"),
         _quality=Quality(_value="1080p"),
-        _codec=Codec(_value="h264")
+        _codec=Codec(_value="h264"),
     )
     video_format_2 = VideoFormat(
         _format_id=FormatId(_value="248"),
         _quality=Quality(_value="1080p"),
-        _codec=Codec(_value="vp9")
+        _codec=Codec(_value="vp9"),
     )
 
     # Act & Assert

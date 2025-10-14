@@ -38,7 +38,7 @@ class TestResolveYoutubeUrlUseCase:
         self,
         mock_repository: AsyncMock,
         mock_query_service: AsyncMock,
-        mock_youtube_resolver: AsyncMock
+        mock_youtube_resolver: AsyncMock,
     ) -> ResolveYoutubeUrlUseCase:
         """ResolveYoutubeUrlUseCaseのインスタンスを作成"""
         return ResolveYoutubeUrlUseCase(mock_repository, mock_query_service, mock_youtube_resolver)
@@ -57,9 +57,7 @@ class TestResolveYoutubeUrlUseCase:
         cached_url = "https://example.com/cached-stream.m3u8"
         future_time = datetime.now(UTC) + timedelta(hours=1)
 
-        cached_dto = StreamUrlDto(
-            video_id=video_id, resolved_url=cached_url, expiry_at=future_time
-        )
+        cached_dto = StreamUrlDto(video_id=video_id, resolved_url=cached_url, expiry_at=future_time)
         mock_query_service.find_by_video_id.return_value = cached_dto
 
         # Act
@@ -93,7 +91,7 @@ class TestResolveYoutubeUrlUseCase:
         # Assert
         assert result == resolved_url
         mock_query_service.find_by_video_id.assert_called_once_with(video_id)
-        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url)
+        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, None)
         mock_repository.save.assert_called_once()
 
         # Repositoryに保存されたStreamUrlを検証
@@ -116,9 +114,7 @@ class TestResolveYoutubeUrlUseCase:
         new_resolved_url = "https://example.com/new-stream.m3u8"
         past_time = datetime.now(UTC) - timedelta(hours=1)
 
-        expired_dto = StreamUrlDto(
-            video_id=video_id, resolved_url=expired_url, expiry_at=past_time
-        )
+        expired_dto = StreamUrlDto(video_id=video_id, resolved_url=expired_url, expiry_at=past_time)
         mock_query_service.find_by_video_id.return_value = expired_dto
         mock_youtube_resolver.resolve_url.return_value = new_resolved_url
 
@@ -128,7 +124,7 @@ class TestResolveYoutubeUrlUseCase:
         # Assert
         assert result == new_resolved_url
         mock_query_service.find_by_video_id.assert_called_once_with(video_id)
-        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url)
+        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, None)
         mock_repository.save.assert_called_once()
 
     async def test_extract_video_id_standard_format(
@@ -233,11 +229,31 @@ class TestResolveYoutubeUrlUseCase:
         expiry_at = saved_stream_url.cache_expiry.expiry_at
 
         # TTLが正しい範囲内であることを確認
-        expected_min = before_execute + timedelta(
-            seconds=config.CACHE_TTL_SECONDS
-        )
-        expected_max = after_execute + timedelta(
-            seconds=config.CACHE_TTL_SECONDS
-        )
+        expected_min = before_execute + timedelta(seconds=config.CACHE_TTL_SECONDS)
+        expected_max = after_execute + timedelta(seconds=config.CACHE_TTL_SECONDS)
 
         assert expected_min <= expiry_at <= expected_max
+
+    async def test_execute_with_format_id(
+        self,
+        usecase: ResolveYoutubeUrlUseCase,
+        mock_query_service: AsyncMock,
+        mock_youtube_resolver: AsyncMock,
+        mock_repository: AsyncMock,
+    ) -> None:
+        """format_idが指定された場合、YoutubeResolverに正しく渡されることをテスト"""
+        # Arrange
+        youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        format_id = "137"
+        resolved_url = "https://example.com/stream.mp4"
+
+        mock_query_service.find_by_video_id.return_value = None
+        mock_youtube_resolver.resolve_url.return_value = resolved_url
+
+        # Act
+        result = await usecase.execute(youtube_url, format_id)
+
+        # Assert
+        assert result == resolved_url
+        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, format_id)
+        mock_repository.save.assert_called_once()

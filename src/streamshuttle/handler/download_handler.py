@@ -6,17 +6,21 @@ Web UIからの動画ダウンロード用エンドポイントを提供しま�
 """
 
 import logging
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
 from streamshuttle.di.container import (
+    get_redis_dao,
     get_resolve_youtube_url_use_case,
     get_video_formats_use_case,
 )
+from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.shared.config import config
 from streamshuttle.shared.csrf_token import generate_csrf_token, verify_csrf_token
 from streamshuttle.shared.exceptions import (
+    CacheError,
     InvalidUrlError,
     InvalidVideoIdError,
     YouTubeResolverError,
@@ -31,12 +35,44 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+def _extract_video_id(url: str) -> str:
+    """
+    YouTube URLからvideo_idを抽出します
+
+    Args:
+        url: YouTube動画URL
+
+    Returns:
+        str: 抽出されたvideo_id（11文字）
+
+    Raises:
+        InvalidVideoIdError: video_idの抽出に失敗した場合
+    """
+    # パターン1: youtube.com/watch?v=VIDEO_ID
+    match = re.search(r"[?&]v=([a-zA-Z0-9_-]{11})", url)
+    if match:
+        return match.group(1)
+
+    # パターン2: youtu.be/VIDEO_ID
+    match = re.search(r"youtu\.be/([a-zA-Z0-9_-]{11})", url)
+    if match:
+        return match.group(1)
+
+    # パターン3: youtube.com/embed/VIDEO_ID
+    match = re.search(r"/embed/([a-zA-Z0-9_-]{11})", url)
+    if match:
+        return match.group(1)
+
+    raise InvalidVideoIdError(f"URLからvideo_idを抽出できませんでした: {url}")
+
+
 @router.get("/formats")
 @limiter.limit(config.RATE_LIMIT_FORMATS)
 async def get_formats(
     request: Request,
     url: str = Query(..., description="YouTube動画URL"),
     use_case: GetVideoFormatsUseCase = Depends(get_video_formats_use_case),
+    redis_dao: RedisDao = Depends(get_redis_dao),
 ):
     """
     YouTube動画の利用可能なフォーマット一覧を取得します
@@ -80,16 +116,28 @@ async def get_formats(
                 f"URL length exceeds maximum in get_formats: "
                 f"url_length={len(url)}, max={config.MAX_URL_LENGTH}"
             )
-            raise InvalidUrlError(
-                f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）"
-            )
+            raise InvalidUrlError(f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）")
 
         formats = await use_case.execute(url)
+
+        # video_idを抽出
+        try:
+            video_id = _extract_video_id(url)
+
+            # 各フォーマットのURLをキャッシュに保存（TTL: 1時間）
+            for fmt in formats:
+                cache_key = f"format_url:{video_id}:{fmt.format_id}"
+                try:
+                    await redis_dao.set(key=cache_key, value=fmt.url, ttl=3600)
+                except CacheError as e:
+                    # キャッシュ保存失敗はログのみ（処理は継続）
+                    logger.warning(f"Failed to cache format URL: {cache_key}, error={e}")
+        except InvalidVideoIdError as e:
+            # video_id抽出失敗はログのみ（処理は継続）
+            logger.warning(f"Failed to extract video_id: url={url}, error={e}")
+
         csrf_token = generate_csrf_token()
-        return {
-            "formats": [f.model_dump() for f in formats],
-            "csrf_token": csrf_token
-        }
+        return {"formats": [f.model_dump() for f in formats], "csrf_token": csrf_token}
     except InvalidUrlError:
         # ログに詳細を記録
         logger.warning(f"Invalid URL in get_formats: url={url}", exc_info=True)
@@ -97,14 +145,10 @@ async def get_formats(
         raise HTTPException(status_code=400, detail="Invalid URL format.")
     except Exception:
         # ログには詳細を記録（本番環境ではログ管理システムで確認）
-        logger.error(
-            f"Unexpected error in get_formats: url={url}",
-            exc_info=True
-        )
+        logger.error(f"Unexpected error in get_formats: url={url}", exc_info=True)
         # クライアントには汎用メッセージのみ（内部構造の露出を防ぐ）
         raise HTTPException(
-            status_code=500,
-            detail="An internal error occurred. Please try again later."
+            status_code=500, detail="An internal error occurred. Please try again later."
         )
 
 
@@ -114,7 +158,9 @@ async def download(
     request: Request,
     url: str = Query(..., description="YouTube動画URL"),
     csrf_token: str = Query(..., description="CSRFトークン"),
+    format_id: str | None = Query(None, description="フォーマットID（オプショナル）"),
     use_case: ResolveYoutubeUrlUseCase = Depends(get_resolve_youtube_url_use_case),
+    redis_dao: RedisDao = Depends(get_redis_dao),
 ) -> RedirectResponse:
     """
     ダウンロード用のYouTube URLを解決し、ストリームURLへリダイレクトします
@@ -125,6 +171,7 @@ async def download(
         request: FastAPI Request（レート制限用）
         url: YouTube動画URL
         csrf_token: CSRFトークン
+        format_id: フォーマットID（オプショナル）
         use_case: ResolveYoutubeUrlUseCase（DIコンテナから注入）
 
     Returns:
@@ -147,10 +194,8 @@ async def download(
         # Refererチェック
         referer = request.headers.get("referer", "")
         if not referer or not any(
-            referer.startswith(origin) for origin in [
-                str(request.base_url),
-                *config.ALLOWED_ORIGINS
-            ]
+            referer.startswith(origin)
+            for origin in [str(request.base_url), *config.ALLOWED_ORIGINS]
         ):
             logger.warning(f"Invalid referer in download: referer={referer}, url={url}")
             raise HTTPException(status_code=403, detail="Invalid request origin.")
@@ -161,11 +206,28 @@ async def download(
                 f"URL length exceeds maximum in download: "
                 f"url_length={len(url)}, max={config.MAX_URL_LENGTH}"
             )
-            raise InvalidUrlError(
-                f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）"
-            )
+            raise InvalidUrlError(f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）")
 
-        resolved_url = await use_case.execute(url)
+        # まずキャッシュからURLを取得（format_idが指定されている場合のみ）
+        resolved_url = None
+        if format_id:
+            try:
+                video_id = _extract_video_id(url)
+                cache_key = f"format_url:{video_id}:{format_id}"
+                cached_url = await redis_dao.get(key=cache_key)
+
+                if cached_url:
+                    logger.info(f"Using cached URL for format: video_id={video_id}, format_id={format_id}")
+                    resolved_url = cached_url
+            except (InvalidVideoIdError, CacheError) as e:
+                # キャッシュ取得失敗はログのみ（フォールバックで処理）
+                logger.warning(f"Failed to get cached URL: url={url}, format_id={format_id}, error={e}")
+
+        # キャッシュミスの場合はyt-dlpで解決（フォールバック）
+        if not resolved_url:
+            logger.info(f"Cache miss, resolving URL with yt-dlp: url={url}, format_id={format_id}")
+            resolved_url = await use_case.execute(url, format_id)
+
         return RedirectResponse(url=resolved_url, status_code=307)
     except HTTPException:
         raise
@@ -186,12 +248,8 @@ async def download(
         raise HTTPException(status_code=502, detail="Failed to resolve URL from YouTube.")
     except Exception:
         # ログには詳細を記録（本番環境ではログ管理システムで確認）
-        logger.error(
-            f"Unexpected error in download: url={url}",
-            exc_info=True
-        )
+        logger.error(f"Unexpected error in download: url={url}", exc_info=True)
         # クライアントには汎用メッセージのみ（内部構造の露出を防ぐ）
         raise HTTPException(
-            status_code=500,
-            detail="An internal error occurred. Please try again later."
+            status_code=500, detail="An internal error occurred. Please try again later."
         )

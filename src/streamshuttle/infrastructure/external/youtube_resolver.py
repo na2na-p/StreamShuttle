@@ -31,15 +31,17 @@ class YoutubeResolver(YoutubeResolverInterface):
         - quiet=Trueでログ出力を抑制
     """
 
-    async def resolve_url(self, youtube_url: str) -> str:
+    async def resolve_url(self, youtube_url: str, format_id: str | None = None) -> str:
         """
         YouTube動画URLを直接ストリームURLに解決します
 
         yt-dlpを使用してYouTube動画URLから直接アクセス可能なストリームURLを取得します。
-        最適な品質（'best'フォーマット）のURLを選択して返します。
+        format_idが指定されている場合は指定されたフォーマットの単一ストリームURLを返し、
+        指定されていない場合は最適な品質（'best'フォーマット）のURLを選択して返します。
 
         Args:
             youtube_url: YouTube動画URL（https://www.youtube.com/watch?v=xxxxx形式）
+            format_id: フォーマットID（オプショナル）
 
         Returns:
             str: 解決済みの直接ストリームURL
@@ -61,36 +63,37 @@ class YoutubeResolver(YoutubeResolverInterface):
                 "www.youtube.com",
                 "m.youtube.com",
                 "youtu.be",
-                "www.youtu.be"
+                "www.youtu.be",
             )
             if parsed_url.hostname not in allowed_domains:
                 raise InvalidUrlError(f"YouTube URLのみサポートしています: {youtube_url}")
 
             # yt-dlpは同期処理のため、asyncio.to_threadで非同期化
-            resolved_url = await asyncio.to_thread(self._resolve_url_sync, youtube_url)
+            resolved_url = await asyncio.to_thread(self._resolve_url_sync, youtube_url, format_id)
         except InvalidUrlError:
             # URL検証エラーはそのまま再送出（クライアント側のエラー）
             raise
         except yt_dlp.utils.DownloadError as e:
-            raise YouTubeResolverError(
-                f"YouTube URLの解決に失敗しました: {youtube_url}"
-            ) from e
+            raise YouTubeResolverError(f"YouTube URLの解決に失敗しました: {youtube_url}") from e
         except Exception as e:
-            raise YouTubeResolverError(
-                f"予期しないエラーが発生しました: {youtube_url}"
-            ) from e
+            raise YouTubeResolverError(f"予期しないエラーが発生しました: {youtube_url}") from e
 
         return resolved_url
 
-    def _resolve_url_sync(self, youtube_url: str) -> str:
+    def _resolve_url_sync(self, youtube_url: str, format_id: str | None = None) -> str:
         """
         yt-dlpを使用してYouTube URLを解決します（同期処理）
 
         この内部メソッドはasyncio.to_threadから呼び出され、
         yt-dlpの同期処理を実行します。
 
+        format_idが指定された場合、そのフォーマットの単一ストリームURLを返します。
+        video onlyフォーマットが指定された場合は動画のみ、audio+videoフォーマットが
+        指定された場合は音声付きのURLを返します。
+
         Args:
             youtube_url: YouTube動画URL
+            format_id: フォーマットID（オプショナル）
 
         Returns:
             str: 解決済みの直接ストリームURL
@@ -99,19 +102,21 @@ class YoutubeResolver(YoutubeResolverInterface):
             yt_dlp.utils.DownloadError: URL解決に失敗した場合
             YouTubeResolverError: URLが取得できなかった場合
         """
+        format_spec = format_id if format_id else "best"
+
         # yt-dlpオプション（Public利用を前提としたセキュリティ設定）
         ydl_opts = {
             # 基本設定
-            "format": "best",  # 最適な品質を選択
-            "quiet": True,  # ログ出力を抑制
-            "no_warnings": True,  # 警告を抑制
+            "format": format_spec,
+            "quiet": True,
+            "no_warnings": True,
             # セキュリティ設定
-            "nocheckcertificate": False,  # SSL証明書を検証（デフォルト動作を明示）
-            "no_color": True,  # カラー出力を無効化（ログインジェクション対策）
-            "no_call_home": True,  # yt-dlpの更新チェックを無効化（不要な外部通信を防止）
-            "socket_timeout": 30,  # タイムアウト設定（30秒）：長時間リクエストを防止
-            "extract_flat": "in_playlist",  # プレイリストの平坦化
-            "noplaylist": True,  # プレイリストダウンロードを無効化（単一動画のみ処理）
+            "nocheckcertificate": False,
+            "no_color": True,
+            "no_call_home": True,
+            "socket_timeout": 30,
+            "extract_flat": "in_playlist",
+            "noplaylist": True,
             # HTTPヘッダー設定（User-Agentを明示）
             "http_headers": {"User-Agent": "StreamShuttle/0.1.0"},
         }

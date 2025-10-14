@@ -36,6 +36,7 @@ def app():
         FastAPI: DownloadHandlerのルーターを含むFastAPIアプリケーション
     """
     from streamshuttle.shared.rate_limiter import limiter
+
     app = FastAPI()
     app.state.limiter = limiter
     app.include_router(router)
@@ -100,13 +101,17 @@ def test_get_formats_success(client, mock_get_formats_use_case):
             format_id="137",
             quality="1080p",
             codec="avc1",
-            url="https://example.com/video1.mp4"
+            url="https://example.com/video1.mp4",
+            has_audio=False,
+            has_video=True,
         ),
         VideoFormatDto(
             format_id="136",
             quality="720p",
             codec="avc1",
-            url="https://example.com/video2.mp4"
+            url="https://example.com/video2.mp4",
+            has_audio=False,
+            has_video=True,
         ),
     ]
     mock_get_formats_use_case.execute.return_value = formats
@@ -202,13 +207,13 @@ def test_download_success(client, mock_resolve_use_case):
     response = client.get(
         f"/download?url={youtube_url}&csrf_token={csrf_token}",
         headers={"referer": "http://testserver/"},
-        follow_redirects=False
+        follow_redirects=False,
     )
 
     # Assert
     assert response.status_code == 307
     assert response.headers["location"] == resolved_url
-    mock_resolve_use_case.execute.assert_called_once_with(youtube_url)
+    mock_resolve_use_case.execute.assert_called_once_with(youtube_url, None)
 
 
 def test_download_with_error(client, mock_resolve_use_case):
@@ -227,7 +232,7 @@ def test_download_with_error(client, mock_resolve_use_case):
     # Act
     response = client.get(
         f"/download?url={youtube_url}&csrf_token={csrf_token}",
-        headers={"referer": "http://testserver/"}
+        headers={"referer": "http://testserver/"},
     )
 
     # Assert
@@ -266,11 +271,11 @@ def test_download_calls_use_case_with_correct_params(client, mock_resolve_use_ca
     client.get(
         f"/download?url={youtube_url}&csrf_token={csrf_token}",
         headers={"referer": "http://testserver/"},
-        follow_redirects=False
+        follow_redirects=False,
     )
 
     # Assert
-    mock_resolve_use_case.execute.assert_called_once_with(youtube_url)
+    mock_resolve_use_case.execute.assert_called_once_with(youtube_url, None)
 
 
 def test_download_with_invalid_video_id(app):
@@ -288,7 +293,7 @@ def test_download_with_invalid_video_id(app):
     # Act
     response = client.get(
         f"/download?url=https://www.youtube.com/watch?v=invalid&csrf_token={csrf_token}",
-        headers={"referer": "http://testserver/"}
+        headers={"referer": "http://testserver/"},
     )
 
     # Assert
@@ -311,7 +316,7 @@ def test_download_with_invalid_url(app):
     # Act
     response = client.get(
         f"/download?url=invalid-url&csrf_token={csrf_token}",
-        headers={"referer": "http://testserver/"}
+        headers={"referer": "http://testserver/"},
     )
 
     # Assert
@@ -331,7 +336,7 @@ def test_download_with_youtube_resolver_error(client, mock_resolve_use_case):
     # Act
     response = client.get(
         f"/download?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&csrf_token={csrf_token}",
-        headers={"referer": "http://testserver/"}
+        headers={"referer": "http://testserver/"},
     )
 
     # Assert
@@ -350,7 +355,7 @@ def test_download_with_invalid_csrf_token(client, mock_resolve_use_case):
     # Act
     response = client.get(
         "/download?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&csrf_token=invalid_token",
-        headers={"referer": "http://testserver/"}
+        headers={"referer": "http://testserver/"},
     )
 
     # Assert
@@ -371,7 +376,7 @@ def test_download_without_csrf_token(app):
     # Act
     response = client.get(
         "/download?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        headers={"referer": "http://testserver/"}
+        headers={"referer": "http://testserver/"},
     )
 
     # Assert
@@ -409,7 +414,7 @@ def test_download_with_invalid_referer(client, mock_resolve_use_case):
     # Act
     response = client.get(
         f"/download?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ&csrf_token={csrf_token}",
-        headers={"referer": "https://malicious-site.com/"}
+        headers={"referer": "https://malicious-site.com/"},
     )
 
     # Assert
@@ -428,7 +433,9 @@ def test_get_formats_returns_csrf_token(client, mock_get_formats_use_case):
             format_id="137",
             quality="1080p",
             codec="avc1.640028",
-            url="https://example.com/video1.mp4"
+            url="https://example.com/video1.mp4",
+            has_audio=False,
+            has_video=True,
         )
     ]
     mock_get_formats_use_case.execute.return_value = mock_formats
@@ -442,3 +449,31 @@ def test_get_formats_returns_csrf_token(client, mock_get_formats_use_case):
     assert "csrf_token" in data
     assert isinstance(data["csrf_token"], str)
     assert len(data["csrf_token"]) > 0
+
+
+def test_download_with_format_id(client, mock_resolve_use_case):
+    """
+    正常系: format_idパラメータが渡された場合、UseCaseに正しく渡されることを検証します
+
+    format_idが指定された場合、
+    エンドポイントは307 Temporary Redirectを返し、
+    UseCaseにformat_idが正しく渡されることを確認します。
+    """
+    # Arrange
+    youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    format_id = "137"
+    resolved_url = "https://rr1---sn-example.googlevideo.com/videoplayback?..."
+    mock_resolve_use_case.execute.return_value = resolved_url
+    csrf_token = generate_csrf_token()
+
+    # Act
+    response = client.get(
+        f"/download?url={youtube_url}&format_id={format_id}&csrf_token={csrf_token}",
+        headers={"referer": "http://testserver/"},
+        follow_redirects=False,
+    )
+
+    # Assert
+    assert response.status_code == 307
+    assert response.headers["location"] == resolved_url
+    mock_resolve_use_case.execute.assert_called_once_with(youtube_url, format_id)

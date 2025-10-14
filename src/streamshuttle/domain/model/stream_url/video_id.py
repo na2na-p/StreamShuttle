@@ -49,12 +49,8 @@ class VideoId:
             raise InvalidVideoIdError("ビデオIDが空です")
 
         if len(self._value) != 11:
-            raise InvalidVideoIdError(
-                f"ビデオIDは11文字である必要があります: {self._value}"
-            )
+            raise InvalidVideoIdError(f"ビデオIDは11文字である必要があります: {self._value}")
 
         # YouTube Video IDは英数字、ハイフン、アンダースコアのみ
         if not re.match(r"^[a-zA-Z0-9_-]{11}$", self._value):
-            raise InvalidVideoIdError(
-                f"ビデオIDの形式が不正です: {self._value}"
-            )
+            raise InvalidVideoIdError(f"ビデオIDの形式が不正です: {self._value}")

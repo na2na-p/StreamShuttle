@@ -27,9 +27,7 @@ def test_stream_url_create_with_valid_parameters():
 
     # Act
     stream_url = StreamUrl.create(
-        video_id=video_id,
-        resolved_url=resolved_url,
-        ttl_seconds=ttl_seconds
+        video_id=video_id, resolved_url=resolved_url, ttl_seconds=ttl_seconds
     )
 
     # Assert
@@ -48,9 +46,7 @@ def test_stream_url_is_expired_returns_false_for_new_stream_url():
     """
     # Arrange
     stream_url = StreamUrl.create(
-        video_id="dQw4w9WgXcQ",
-        resolved_url="https://example.com/video.m3u8",
-        ttl_seconds=3600
+        video_id="dQw4w9WgXcQ", resolved_url="https://example.com/video.m3u8", ttl_seconds=3600
     )
 
     # Act
@@ -75,9 +71,7 @@ def test_stream_url_create_raises_exception_for_invalid_video_id():
     # Act & Assert
     with pytest.raises(InvalidVideoIdError):
         StreamUrl.create(
-            video_id=invalid_video_id,
-            resolved_url=resolved_url,
-            ttl_seconds=ttl_seconds
+            video_id=invalid_video_id, resolved_url=resolved_url, ttl_seconds=ttl_seconds
         )
 
 
@@ -95,11 +89,7 @@ def test_stream_url_create_raises_exception_for_invalid_url():
 
     # Act & Assert
     with pytest.raises(InvalidUrlError):
-        StreamUrl.create(
-            video_id=video_id,
-            resolved_url=invalid_url,
-            ttl_seconds=ttl_seconds
-        )
+        StreamUrl.create(video_id=video_id, resolved_url=invalid_url, ttl_seconds=ttl_seconds)
 
 
 def test_stream_url_properties_are_accessible():
@@ -116,9 +106,7 @@ def test_stream_url_properties_are_accessible():
     resolved_url = "https://example.com/video.m3u8"
     ttl_seconds = 3600
     stream_url = StreamUrl.create(
-        video_id=video_id,
-        resolved_url=resolved_url,
-        ttl_seconds=ttl_seconds
+        video_id=video_id, resolved_url=resolved_url, ttl_seconds=ttl_seconds
     )
 
     # Act & Assert
@@ -141,14 +129,13 @@ def test_stream_url_immutability():
     """
     # Arrange
     stream_url = StreamUrl.create(
-        video_id="dQw4w9WgXcQ",
-        resolved_url="https://example.com/video.m3u8",
-        ttl_seconds=3600
+        video_id="dQw4w9WgXcQ", resolved_url="https://example.com/video.m3u8", ttl_seconds=3600
     )
 
     # Act & Assert
     with pytest.raises(Exception):  # FrozenInstanceErrorまたはAttributeError
         from streamshuttle.domain.model.stream_url.video_id import VideoId
+
         stream_url._video_id = VideoId(_value="abcdefghijk")  # noqa: F841
 
 
@@ -174,14 +161,10 @@ def test_stream_url_equality():
     # ここでは、video_idとresolved_urlが同じであることを確認します。
 
     stream_url_1 = StreamUrl.create(
-        video_id=video_id,
-        resolved_url=resolved_url,
-        ttl_seconds=ttl_seconds
+        video_id=video_id, resolved_url=resolved_url, ttl_seconds=ttl_seconds
     )
     stream_url_2 = StreamUrl.create(
-        video_id=video_id,
-        resolved_url=resolved_url,
-        ttl_seconds=ttl_seconds
+        video_id=video_id, resolved_url=resolved_url, ttl_seconds=ttl_seconds
     )
 
     # Act & Assert

@@ -19,15 +19,17 @@ class YoutubeResolver(ABC):
     """
 
     @abstractmethod
-    async def resolve_url(self, youtube_url: str) -> str:
+    async def resolve_url(self, youtube_url: str, format_id: str | None = None) -> str:
         """
         YouTube動画URLを直接ストリームURLに解決します
 
         yt-dlpを使用してYouTube動画URLから直接アクセス可能なストリームURLを取得します。
-        最適な品質（'best'フォーマット）のURLを選択して返します。
+        format_idが指定されている場合は指定されたフォーマットの単一ストリームURLを返し、
+        指定されていない場合は最適な品質（'best'フォーマット）のURLを選択して返します。
 
         Args:
             youtube_url: YouTube動画URL（https://www.youtube.com/watch?v=xxxxx形式）
+            format_id: フォーマットID（オプショナル）
 
         Returns:
             str: 解決済みの直接ストリームURL

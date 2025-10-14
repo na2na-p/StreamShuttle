@@ -33,9 +33,7 @@ class JSONFormatter(logging.Formatter):
             str: JSON形式のログメッセージ
         """
         log_data: dict[str, Any] = {
-            "timestamp": datetime.fromtimestamp(
-                record.created, tz=UTC
-            ).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -89,19 +87,17 @@ def setup_logging() -> None:
     # 新しいハンドラーを追加
     root_logger.addHandler(handler)
 
-    # uvicornのログレベルも同期し、フォーマッターを適用
-    uvicorn_logger = logging.getLogger("uvicorn")
-    uvicorn_logger.setLevel(log_level)
-    uvicorn_logger.handlers.clear()
-    uvicorn_handler = logging.StreamHandler(sys.stdout)
-    uvicorn_handler.setFormatter(formatter)
-    uvicorn_logger.addHandler(uvicorn_handler)
-    uvicorn_logger.propagate = False
+    # uvicorn関連のすべてのロガーを設定
+    # reloaderのログもキャッチするため、親ロガーに伝播させる設定とする
+    uvicorn_loggers = [
+        "uvicorn",
+        "uvicorn.error",
+        "uvicorn.access",
+    ]
 
-    uvicorn_access_logger = logging.getLogger("uvicorn.access")
-    uvicorn_access_logger.setLevel(log_level)
-    uvicorn_access_logger.handlers.clear()
-    uvicorn_access_handler = logging.StreamHandler(sys.stdout)
-    uvicorn_access_handler.setFormatter(formatter)
-    uvicorn_access_logger.addHandler(uvicorn_access_handler)
-    uvicorn_access_logger.propagate = False
+    for logger_name in uvicorn_loggers:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(log_level)
+        logger.handlers.clear()
+        # ハンドラーは設定せず、ルートロガーに伝播させる
+        logger.propagate = True

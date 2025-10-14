@@ -106,7 +106,5 @@ class StreamUrl:
         expiry_at = datetime.now(UTC) + timedelta(seconds=ttl_seconds)
         cache_expiry = CacheExpiry(_expiry_at=expiry_at)
         return StreamUrl(
-            _video_id=video_id_vo,
-            _resolved_url=resolved_url_vo,
-            _cache_expiry=cache_expiry
+            _video_id=video_id_vo, _resolved_url=resolved_url_vo, _cache_expiry=cache_expiry
         )

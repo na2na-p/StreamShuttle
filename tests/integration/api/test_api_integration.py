@@ -42,6 +42,7 @@ def client(fake_redis):
     Returns:
         TestClient: FastAPIテストクライアント
     """
+
     # DIコンテナのget_redis_daoをfakeredisを返すようにモック
     def mock_get_redis_dao():
         from streamshuttle.infrastructure.dao.redis_dao import RedisDao

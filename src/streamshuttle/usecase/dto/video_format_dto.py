@@ -19,6 +19,8 @@ class VideoFormatDto(BaseModel):
         quality: 動画品質の説明（例: "1080p", "720p60"）
         codec: 使用されているコーデック（例: "vp9", "avc1"）
         url: フォーマットに対応する直接ストリームURL
+        has_audio: 音声が含まれているか
+        has_video: 動画が含まれているか
     """
 
     model_config = ConfigDict(frozen=True)
@@ -27,3 +29,5 @@ class VideoFormatDto(BaseModel):
     quality: str = Field(..., description="動画品質の説明")
     codec: str = Field(..., description="使用されているコーデック")
     url: str = Field(..., description="フォーマットに対応する直接ストリームURL")
+    has_audio: bool = Field(..., description="音声が含まれているか")
+    has_video: bool = Field(..., description="動画が含まれているか")

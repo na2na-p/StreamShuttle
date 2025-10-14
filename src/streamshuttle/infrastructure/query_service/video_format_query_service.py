@@ -62,7 +62,7 @@ class VideoFormatQueryService(VideoFormatQueryServiceInterface):
                 "www.youtube.com",
                 "m.youtube.com",
                 "youtu.be",
-                "www.youtu.be"
+                "www.youtu.be",
             )
             if parsed_url.hostname not in allowed_domains:
                 raise InvalidUrlError(f"YouTube URLのみサポートしています: {youtube_url}")
@@ -73,13 +73,9 @@ class VideoFormatQueryService(VideoFormatQueryServiceInterface):
             # URL検証エラーはそのまま再送出（クライアント側のエラー）
             raise
         except yt_dlp.utils.DownloadError as e:
-            raise YouTubeResolverError(
-                f"YouTube動画情報の取得に失敗しました: {youtube_url}"
-            ) from e
+            raise YouTubeResolverError(f"YouTube動画情報の取得に失敗しました: {youtube_url}") from e
         except Exception as e:
-            raise YouTubeResolverError(
-                f"予期しないエラーが発生しました: {youtube_url}"
-            ) from e
+            raise YouTubeResolverError(f"予期しないエラーが発生しました: {youtube_url}") from e
 
         # フォーマット情報が存在しない場合
         if "formats" not in info:
@@ -92,12 +88,25 @@ class VideoFormatQueryService(VideoFormatQueryServiceInterface):
             if not all(key in fmt for key in ["format_id", "url"]):
                 continue
 
+            # HLSフォーマット（m3u8）を除外
+            protocol = fmt.get("protocol", "")
+            if protocol in ("m3u8", "m3u8_native", "m3u8_native+http"):
+                continue
+
+            # 音声と動画の有無を確認
+            acodec = fmt.get("acodec", "none")
+            vcodec = fmt.get("vcodec", "none")
+            has_audio = acodec != "none"
+            has_video = vcodec != "none"
+
             format_dtos.append(
                 VideoFormatDto(
                     format_id=fmt["format_id"],
-                    quality=fmt.get("format_note", "unknown"),  # 品質情報（例: "1080p"）
-                    codec=fmt.get("vcodec", "unknown"),  # ビデオコーデック
+                    quality=fmt.get("format_note", "unknown"),
+                    codec=vcodec if vcodec != "none" else "unknown",
                     url=fmt["url"],
+                    has_audio=has_audio,
+                    has_video=has_video,
                 )
             )
 

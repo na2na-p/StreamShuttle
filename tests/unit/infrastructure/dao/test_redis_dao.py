@@ -184,11 +184,7 @@ async def test_redis_dao_set_raises_cache_exception_on_redis_error(redis_dao, mo
     Assert: CacheErrorが発生することを確認
     """
     # Arrange
-    mocker.patch.object(
-        redis_dao._redis,
-        'setex',
-        side_effect=RedisError("Redis connection error")
-    )
+    mocker.patch.object(redis_dao._redis, "setex", side_effect=RedisError("Redis connection error"))
 
     # Act & Assert
     with pytest.raises(CacheError) as exc_info:
@@ -206,11 +202,7 @@ async def test_redis_dao_get_raises_cache_exception_on_redis_error(redis_dao, mo
     Assert: CacheErrorが発生することを確認
     """
     # Arrange
-    mocker.patch.object(
-        redis_dao._redis,
-        'get',
-        side_effect=RedisError("Redis connection error")
-    )
+    mocker.patch.object(redis_dao._redis, "get", side_effect=RedisError("Redis connection error"))
 
     # Act & Assert
     with pytest.raises(CacheError) as exc_info:
@@ -229,9 +221,7 @@ async def test_redis_dao_delete_raises_cache_exception_on_redis_error(redis_dao,
     """
     # Arrange
     mocker.patch.object(
-        redis_dao._redis,
-        'delete',
-        side_effect=RedisError("Redis connection error")
+        redis_dao._redis, "delete", side_effect=RedisError("Redis connection error")
     )
 
     # Act & Assert
@@ -251,9 +241,7 @@ async def test_redis_dao_exists_raises_cache_exception_on_redis_error(redis_dao,
     """
     # Arrange
     mocker.patch.object(
-        redis_dao._redis,
-        'exists',
-        side_effect=RedisError("Redis connection error")
+        redis_dao._redis, "exists", side_effect=RedisError("Redis connection error")
     )
 
     # Act & Assert

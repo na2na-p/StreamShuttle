@@ -50,9 +50,7 @@ async def test_stream_url_repository_save_calls_redis_dao_set(repository, mock_r
     """
     # Arrange
     stream_url = StreamUrl.create(
-        video_id="dQw4w9WgXcQ",
-        resolved_url="https://example.com/video.m3u8",
-        ttl_seconds=3600
+        video_id="dQw4w9WgXcQ", resolved_url="https://example.com/video.m3u8", ttl_seconds=3600
     )
 
     # Act
@@ -79,9 +77,7 @@ async def test_stream_url_repository_save_raises_cache_exception_on_redis_error(
     """
     # Arrange
     stream_url = StreamUrl.create(
-        video_id="dQw4w9WgXcQ",
-        resolved_url="https://example.com/video.m3u8",
-        ttl_seconds=3600
+        video_id="dQw4w9WgXcQ", resolved_url="https://example.com/video.m3u8", ttl_seconds=3600
     )
     mock_redis_dao.set.side_effect = CacheError("Redis error")
 
@@ -90,9 +86,7 @@ async def test_stream_url_repository_save_raises_cache_exception_on_redis_error(
         await repository.save(stream_url=stream_url)
 
 
-async def test_stream_url_repository_delete_calls_redis_dao_delete(
-    repository, mock_redis_dao
-):
+async def test_stream_url_repository_delete_calls_redis_dao_delete(repository, mock_redis_dao):
     """
     正常系: StreamUrlRepository.delete()がRedisDaoのdelete()を呼び出すことを確認
 

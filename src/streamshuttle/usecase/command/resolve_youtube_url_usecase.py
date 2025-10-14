@@ -48,12 +48,13 @@ class ResolveYoutubeUrlUseCase:
         self._query_service = query_service
         self._youtube_resolver = youtube_resolver
 
-    async def execute(self, youtube_url: str) -> str:
+    async def execute(self, youtube_url: str, format_id: str | None = None) -> str:
         """
         YouTube URLをストリームURLに解決します
 
         Args:
             youtube_url: YouTube動画URL
+            format_id: フォーマットID（オプショナル）
 
         Returns:
             str: 解決済みの直接ストリームURL
@@ -75,13 +76,11 @@ class ResolveYoutubeUrlUseCase:
             return cached.resolved_url
 
         # 4. キャッシュがない/期限切れの場合
-        resolved_url = await self._youtube_resolver.resolve_url(youtube_url)
+        resolved_url = await self._youtube_resolver.resolve_url(youtube_url, format_id)
 
         # 5. Aggregateを生成して保存（ファクトリーメソッド使用）
         stream_url = StreamUrl.create(
-            video_id=video_id,
-            resolved_url=resolved_url,
-            ttl_seconds=config.CACHE_TTL_SECONDS
+            video_id=video_id, resolved_url=resolved_url, ttl_seconds=config.CACHE_TTL_SECONDS
         )
         await self._repository.save(stream_url)
 

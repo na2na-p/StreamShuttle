@@ -12,9 +12,10 @@ ENV PYTHONUNBUFFERED=1 \
         PATH="/app/.venv/bin:$PATH" \
         PYTHONPATH="/app/src"
 
-# ビルドツールのインストール（C拡張モジュール（uvloop等）のビルドに必要）
+# ビルドツールとffmpegのインストール（C拡張モジュール（uvloop等）のビルドとメディアマージに必要）
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
+        ffmpeg \
         && rm -rf /var/lib/apt/lists/*
 
 # uvパッケージマネージャーのインストール（高速な依存関係解決）
@@ -56,14 +57,16 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # セキュリティ向上: 非rootユーザーで実行
 RUN useradd -m -u 1000 appuser && \
+        chmod +x entrypoint.sh && \
         chown -R appuser:appuser /app
 
 USER appuser
 
 EXPOSE 8000
 
-# 開発サーバー起動（ホットリロード有効）
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# 開発サーバー起動（ホットリロード有効、ログ形式は環境変数で制御）
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["--reload"]
 
 # 本番ステージ: 最適化されたイメージ（開発用依存関係なし）
 FROM base AS production
@@ -75,11 +78,13 @@ COPY . .
 
 # セキュリティ向上: 非rootユーザーで実行
 RUN useradd -m -u 1000 appuser && \
+        chmod +x entrypoint.sh && \
         chown -R appuser:appuser /app
 
 USER appuser
 
 EXPOSE 8000
 
-# 本番サーバー起動（ホットリロードなし）
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 本番サーバー起動（ホットリロードなし、ログ形式は環境変数で制御）
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD []

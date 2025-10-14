@@ -41,9 +41,7 @@ def get_redis_dao() -> RedisDao:
     """
     global _redis_dao
     if _redis_dao is None:
-        _redis_dao = RedisDao(
-            host=config.REDIS_HOST, port=config.REDIS_PORT, db=config.REDIS_DB
-        )
+        _redis_dao = RedisDao(host=config.REDIS_HOST, port=config.REDIS_PORT, db=config.REDIS_DB)
     return _redis_dao
 
 

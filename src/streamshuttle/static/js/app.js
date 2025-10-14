@@ -55,7 +55,22 @@ document.addEventListener('DOMContentLoaded', function() {
     formats.forEach(format => {
       const option = document.createElement('div');
       option.className = 'format-option';
-      option.textContent = `${format.quality} - ${format.codec} (${format.format_id})`;
+
+      // フォーマットタイプに応じたクラスを設定
+      let typeClass = '';
+      if (format.has_audio && format.has_video) {
+        typeClass = 'format-audio-video';
+      } else if (format.has_video) {
+        typeClass = 'format-video-only';
+      } else if (format.has_audio) {
+        typeClass = 'format-audio-only';
+      }
+
+      // typeClassが空でない場合のみクラスを追加
+      if (typeClass) {
+        option.classList.add(typeClass);
+      }
+      option.textContent = `${format.quality} - ${format.codec}`;
       option.dataset.formatId = format.format_id;
 
       option.addEventListener('click', function() {

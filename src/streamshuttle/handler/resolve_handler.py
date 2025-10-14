@@ -63,9 +63,7 @@ async def resolve_url(
             logger.warning(
                 f"URL length exceeds maximum: url_length={len(url)}, max={config.MAX_URL_LENGTH}"
             )
-            raise InvalidUrlError(
-                f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）"
-            )
+            raise InvalidUrlError(f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）")
 
         resolved_url = await use_case.execute(url)
         return RedirectResponse(url=resolved_url, status_code=307)
@@ -86,12 +84,8 @@ async def resolve_url(
         raise HTTPException(status_code=502, detail="Failed to resolve URL from YouTube.")
     except Exception:
         # ログには詳細を記録（本番環境ではログ管理システムで確認）
-        logger.error(
-            f"Unexpected error in resolve_url: url={url}",
-            exc_info=True
-        )
+        logger.error(f"Unexpected error in resolve_url: url={url}", exc_info=True)
         # クライアントには汎用メッセージのみ（内部構造の露出を防ぐ）
         raise HTTPException(
-            status_code=500,
-            detail="An internal error occurred. Please try again later."
+            status_code=500, detail="An internal error occurred. Please try again later."
         )

@@ -164,7 +164,7 @@ def test_resolve_url_with_unexpected_error(client, mock_use_case):
 
     # Assert
     assert response.status_code == 500
-    assert "Internal server error" in response.json()["detail"]
+    assert "An internal error occurred. Please try again later." in response.json()["detail"]
 
 
 def test_resolve_url_calls_use_case_with_correct_params(client, mock_use_case):
