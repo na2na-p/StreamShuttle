@@ -228,15 +228,13 @@ async def download(
 
                 if cached_url:
                     logger.info(
-                        f"Using cached URL for format: video_id={video_id}, "
-                        f"format_id={format_id}"
+                        f"Using cached URL for format: video_id={video_id}, format_id={format_id}"
                     )
                     resolved_url = cached_url
             except (InvalidVideoIdError, CacheError) as e:
                 # キャッシュ取得失敗はログのみ（フォールバックで処理）
                 logger.warning(
-                    f"Failed to get cached URL: url={url}, format_id={format_id}, "
-                    f"error={e}"
+                    f"Failed to get cached URL: url={url}, format_id={format_id}, error={e}"
                 )
 
         # キャッシュミスの場合はyt-dlpで解決（フォールバック）

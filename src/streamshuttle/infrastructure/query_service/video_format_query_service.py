@@ -33,7 +33,9 @@ class VideoFormatQueryService(VideoFormatQueryServiceInterface):
         - quiet=Trueでログ出力を抑制
     """
 
-    async def get_available_formats(self, youtube_url: str) -> tuple[VideoInfoDto, list[VideoFormatDto]]:
+    async def get_available_formats(
+        self, youtube_url: str
+    ) -> tuple[VideoInfoDto, list[VideoFormatDto]]:
         """
         YouTube動画URLから利用可能なフォーマット一覧と動画情報を取得します
 

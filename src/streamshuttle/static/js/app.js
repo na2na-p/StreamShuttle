@@ -57,6 +57,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // 動画情報を表示
     videoThumbnail.src = videoInfo.thumbnail_url;
     videoThumbnail.alt = videoInfo.title;
+    videoThumbnail.onerror = function() {
+      const videoId = videoInfo.video_id;
+      if (this.src.includes('maxresdefault')) {
+        this.src = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+      } else if (this.src.includes('hqdefault')) {
+        this.src = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+      }
+    };
     videoTitle.textContent = videoInfo.title;
     videoId.textContent = `動画ID: ${videoInfo.video_id}`;
     videoInfoContainer.classList.remove('hidden');

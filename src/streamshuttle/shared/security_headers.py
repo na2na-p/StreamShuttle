@@ -41,7 +41,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "default-src 'self'; "
             "script-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "  # Jinja2テンプレートのインラインスタイル許可
-            "img-src 'self' data:; "
+            "img-src 'self' data: https://i.ytimg.com; "  # YouTubeサムネイル画像を許可
             "connect-src 'self'; "
             "frame-ancestors 'none';"
         )
