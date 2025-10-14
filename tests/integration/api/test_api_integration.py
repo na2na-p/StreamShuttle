@@ -75,7 +75,7 @@ def test_root_endpoint(client):
     """
     ルートエンドポイント（GET /）が正常に動作することを確認
 
-    サービス情報が正しく返されることをテストします。
+    Web UIのHTMLページが正しく返されることをテストします。
 
     Args:
         client: TestClientインスタンス
@@ -83,13 +83,14 @@ def test_root_endpoint(client):
     response = client.get("/")
     assert response.status_code == 200
 
-    data = response.json()
-    assert data["service"] == "StreamShuttle"
-    assert data["version"] == "0.1.0"
-    assert "endpoints" in data
-    assert "resolve" in data["endpoints"]
-    assert "formats" in data["endpoints"]
-    assert "download" in data["endpoints"]
+    # HTMLレスポンスであることを確認
+    assert response.headers["content-type"].startswith("text/html")
+
+    # HTMLの基本的な要素が含まれていることを確認
+    html_content = response.text
+    assert "<!DOCTYPE html>" in html_content
+    assert "<html" in html_content
+    assert "StreamShuttle" in html_content
 
 
 def test_health_check(client):
@@ -169,8 +170,8 @@ def test_formats_endpoint_with_invalid_url(client):
         client: TestClientインスタンス
     """
     response = client.get("/formats?url=invalid_url")
-    # 不正なURLの場合は500エラー
-    assert response.status_code == 500
+    # 不正なURLの場合は400 Bad Request
+    assert response.status_code == 400
 
 
 def test_download_endpoint_requires_url_parameter(client):
@@ -193,8 +194,9 @@ def test_download_endpoint_with_invalid_url(client):
         client: TestClientインスタンス
     """
     response = client.get("/download?url=invalid_url")
-    # 不正なURLの場合は400 Bad Requestまたは502エラー
-    assert response.status_code in [400, 502, 500]
+    # csrf_tokenパラメータが必須なので422 Unprocessable Entity、
+    # またはURLが不正な場合は400 Bad Request、502エラー
+    assert response.status_code in [400, 422, 502, 500]
 
 
 @pytest.mark.skip(reason="実際のYouTube APIを呼び出すため統合テストではスキップ")
