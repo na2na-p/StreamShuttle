@@ -113,9 +113,7 @@ def test_get_formats_success(client, mock_get_formats_use_case):
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     video_info = VideoInfoDto(
-        video_id="dQw4w9WgXcQ",
-        title="Test Video",
-        thumbnail_url="https://example.com/thumb.jpg"
+        video_id="dQw4w9WgXcQ", title="Test Video", thumbnail_url="https://example.com/thumb.jpg"
     )
     formats = [
         VideoFormatDto(
@@ -165,9 +163,7 @@ def test_get_formats_with_empty_list(client, mock_get_formats_use_case):
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     video_info = VideoInfoDto(
-        video_id="dQw4w9WgXcQ",
-        title="Test Video",
-        thumbnail_url="https://example.com/thumb.jpg"
+        video_id="dQw4w9WgXcQ", title="Test Video", thumbnail_url="https://example.com/thumb.jpg"
     )
     mock_get_formats_use_case.execute.return_value = (video_info, [])
 
@@ -455,9 +451,7 @@ def test_get_formats_returns_csrf_token(client, mock_get_formats_use_case, mock_
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     video_info = VideoInfoDto(
-        video_id="dQw4w9WgXcQ",
-        title="Test Video",
-        thumbnail_url="https://example.com/thumb.jpg"
+        video_id="dQw4w9WgXcQ", title="Test Video", thumbnail_url="https://example.com/thumb.jpg"
     )
     mock_formats = [
         VideoFormatDto(
