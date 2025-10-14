@@ -11,6 +11,7 @@ import yt_dlp
 
 from streamshuttle.shared.exceptions import InvalidUrlError, YouTubeResolverError
 from streamshuttle.usecase.dto.video_format_dto import VideoFormatDto
+from streamshuttle.usecase.dto.video_info_dto import VideoInfoDto
 from streamshuttle.usecase.query_service.video_format_query_service import (
     VideoFormatQueryService as VideoFormatQueryServiceInterface,
 )
@@ -32,18 +33,18 @@ class VideoFormatQueryService(VideoFormatQueryServiceInterface):
         - quiet=Trueでログ出力を抑制
     """
 
-    async def get_available_formats(self, youtube_url: str) -> list[VideoFormatDto]:
+    async def get_available_formats(self, youtube_url: str) -> tuple[VideoInfoDto, list[VideoFormatDto]]:
         """
-        YouTube動画URLから利用可能なフォーマット一覧を取得します
+        YouTube動画URLから利用可能なフォーマット一覧と動画情報を取得します
 
-        yt-dlpを使用してYouTube動画の利用可能なフォーマット情報を取得し、
-        VideoFormatDtoのリストとして返します。
+        yt-dlpを使用してYouTube動画の利用可能なフォーマット情報と基本情報を取得し、
+        VideoInfoDtoとVideoFormatDtoのリストのタプルとして返します。
 
         Args:
             youtube_url: YouTube動画URL（https://www.youtube.com/watch?v=xxxxx形式）
 
         Returns:
-            list[VideoFormatDto]: 利用可能なフォーマット情報のリスト
+            tuple[VideoInfoDto, list[VideoFormatDto]]: 動画情報とフォーマット情報のリスト
 
         Raises:
             YouTubeResolverError: YouTube APIへのアクセスまたはURL解決に失敗した場合
@@ -77,9 +78,16 @@ class VideoFormatQueryService(VideoFormatQueryServiceInterface):
         except Exception as e:
             raise YouTubeResolverError(f"予期しないエラーが発生しました: {youtube_url}") from e
 
+        # 動画情報を取得（適切なデフォルト値を設定）
+        video_info = VideoInfoDto(
+            video_id=info.get("id", "unknown"),
+            title=info.get("title", "Unknown Title"),
+            thumbnail_url=info.get("thumbnail", ""),
+        )
+
         # フォーマット情報が存在しない場合
         if "formats" not in info:
-            return []
+            return video_info, []
 
         # フォーマット情報をDTOに変換
         format_dtos: list[VideoFormatDto] = []
@@ -110,7 +118,7 @@ class VideoFormatQueryService(VideoFormatQueryServiceInterface):
                 )
             )
 
-        return format_dtos
+        return video_info, format_dtos
 
     def _extract_info(self, youtube_url: str) -> dict:
         """

@@ -9,6 +9,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const downloadContainer = document.getElementById('download-container');
   const downloadBtn = document.getElementById('download-btn');
   const errorMessage = document.getElementById('error-message');
+  const videoInfoContainer = document.getElementById('video-info-container');
+  const videoThumbnail = document.getElementById('video-thumbnail');
+  const videoTitle = document.getElementById('video-title');
+  const videoId = document.getElementById('video-id');
 
   // 状態管理
   let selectedFormat = null;
@@ -26,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
     currentUrl = url;
     hideError();
     formatsContainer.classList.add('hidden');
+    videoInfoContainer.classList.add('hidden');
     downloadContainer.classList.add('hidden');
     fetchFormatsBtn.disabled = true;
     fetchFormatsBtn.textContent = '取得中...';
@@ -38,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       const data = await response.json();
       csrfToken = data.csrf_token;
-      displayFormats(data.formats);
+      displayFormats(data.video_info, data.formats);
     } catch (error) {
       showError(`フォーマット取得エラー: ${error.message}`);
     } finally {
@@ -48,7 +53,14 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // フォーマット一覧を表示
-  function displayFormats(formats) {
+  function displayFormats(videoInfo, formats) {
+    // 動画情報を表示
+    videoThumbnail.src = videoInfo.thumbnail_url;
+    videoThumbnail.alt = videoInfo.title;
+    videoTitle.textContent = videoInfo.title;
+    videoId.textContent = `動画ID: ${videoInfo.video_id}`;
+    videoInfoContainer.classList.remove('hidden');
+
     formatsList.innerHTML = '';
     selectedFormat = null;
 
@@ -56,7 +68,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const option = document.createElement('div');
       option.className = 'format-option';
 
-      // フォーマットタイプに応じたクラスを設定
       let typeClass = '';
       if (format.has_audio && format.has_video) {
         typeClass = 'format-audio-video';
@@ -66,7 +77,6 @@ document.addEventListener('DOMContentLoaded', function() {
         typeClass = 'format-audio-only';
       }
 
-      // typeClassが空でない場合のみクラスを追加
       if (typeClass) {
         option.classList.add(typeClass);
       }
@@ -74,11 +84,9 @@ document.addEventListener('DOMContentLoaded', function() {
       option.dataset.formatId = format.format_id;
 
       option.addEventListener('click', function() {
-        // 全ての選択を解除
         document.querySelectorAll('.format-option').forEach(el => {
           el.classList.remove('selected');
         });
-        // 選択したフォーマットをハイライト
         option.classList.add('selected');
         selectedFormat = format.format_id;
         downloadContainer.classList.remove('hidden');

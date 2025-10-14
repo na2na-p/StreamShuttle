@@ -7,6 +7,7 @@ YouTube動画の利用可能なフォーマット情報を取得するQueryServi
 from abc import ABC, abstractmethod
 
 from streamshuttle.usecase.dto.video_format_dto import VideoFormatDto
+from streamshuttle.usecase.dto.video_info_dto import VideoInfoDto
 
 
 class VideoFormatQueryService(ABC):
@@ -21,18 +22,18 @@ class VideoFormatQueryService(ABC):
     """
 
     @abstractmethod
-    async def get_available_formats(self, youtube_url: str) -> list[VideoFormatDto]:
+    async def get_available_formats(self, youtube_url: str) -> tuple[VideoInfoDto, list[VideoFormatDto]]:
         """
-        YouTube動画URLから利用可能なフォーマット一覧を取得します
+        YouTube動画URLから利用可能なフォーマット一覧と動画情報を取得します
 
-        yt-dlpを使用してYouTube動画の利用可能なフォーマット情報を取得し、
-        VideoFormatDtoのリストとして返します。
+        yt-dlpを使用してYouTube動画の利用可能なフォーマット情報と基本情報を取得し、
+        VideoInfoDtoとVideoFormatDtoのリストのタプルとして返します。
 
         Args:
             youtube_url: YouTube動画URL（https://www.youtube.com/watch?v=xxxxx形式）
 
         Returns:
-            list[VideoFormatDto]: 利用可能なフォーマット情報のリスト
+            tuple[VideoInfoDto, list[VideoFormatDto]]: 動画情報とフォーマット情報のリスト
 
         Raises:
             YouTubeResolverException: YouTube APIへのアクセスまたはURL解決に失敗した場合

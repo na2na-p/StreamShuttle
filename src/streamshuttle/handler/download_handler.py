@@ -75,9 +75,10 @@ async def get_formats(
     redis_dao: RedisDao = Depends(get_redis_dao),
 ):
     """
-    YouTube動画の利用可能なフォーマット一覧を取得します
+    YouTube動画の利用可能なフォーマット一覧と動画情報を取得します
 
-    指定されたYouTube動画URLの利用可能なフォーマット一覧を取得します。
+    指定されたYouTube動画URLの利用可能なフォーマット一覧と、
+    動画のタイトル・サムネイルなどの基本情報を取得します。
     各フォーマットにはフォーマットID、品質、コーデック、URLが含まれます。
     この情報をもとに、クライアント側で適切なフォーマットを選択できます。
 
@@ -91,12 +92,19 @@ async def get_formats(
     Returns:
         dict: 以下の形式のJSON
             {
+                "video_info": {
+                    "video_id": "dQw4w9WgXcQ",
+                    "title": "動画タイトル",
+                    "thumbnail_url": "https://i.ytimg.com/vi/..."
+                },
                 "formats": [
                     {
                         "format_id": "137",
                         "quality": "1080p",
                         "codec": "avc1",
-                        "url": "https://..."
+                        "url": "https://...",
+                        "has_audio": false,
+                        "has_video": true
                     },
                     ...
                 ],
@@ -118,7 +126,7 @@ async def get_formats(
             )
             raise InvalidUrlError(f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）")
 
-        formats = await use_case.execute(url)
+        video_info, formats = await use_case.execute(url)
 
         # video_idを抽出
         try:
@@ -130,14 +138,16 @@ async def get_formats(
                 try:
                     await redis_dao.set(key=cache_key, value=fmt.url, ttl=3600)
                 except CacheError as e:
-                    # キャッシュ保存失敗はログのみ（処理は継続）
                     logger.warning(f"Failed to cache format URL: {cache_key}, error={e}")
         except InvalidVideoIdError as e:
-            # video_id抽出失敗はログのみ（処理は継続）
             logger.warning(f"Failed to extract video_id: url={url}, error={e}")
 
         csrf_token = generate_csrf_token()
-        return {"formats": [f.model_dump() for f in formats], "csrf_token": csrf_token}
+        return {
+            "video_info": video_info.model_dump(),
+            "formats": [f.model_dump() for f in formats],
+            "csrf_token": csrf_token,
+        }
     except InvalidUrlError:
         # ログに詳細を記録
         logger.warning(f"Invalid URL in get_formats: url={url}", exc_info=True)
@@ -217,11 +227,17 @@ async def download(
                 cached_url = await redis_dao.get(key=cache_key)
 
                 if cached_url:
-                    logger.info(f"Using cached URL for format: video_id={video_id}, format_id={format_id}")
+                    logger.info(
+                        f"Using cached URL for format: video_id={video_id}, "
+                        f"format_id={format_id}"
+                    )
                     resolved_url = cached_url
             except (InvalidVideoIdError, CacheError) as e:
                 # キャッシュ取得失敗はログのみ（フォールバックで処理）
-                logger.warning(f"Failed to get cached URL: url={url}, format_id={format_id}, error={e}")
+                logger.warning(
+                    f"Failed to get cached URL: url={url}, format_id={format_id}, "
+                    f"error={e}"
+                )
 
         # キャッシュミスの場合はyt-dlpで解決（フォールバック）
         if not resolved_url:
