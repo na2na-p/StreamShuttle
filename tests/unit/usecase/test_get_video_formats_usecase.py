@@ -63,7 +63,9 @@ class TestGetVideoFormatsUseCase:
                 has_video=True,
             ),
         ]
-        mock_query_service.get_available_formats.return_value = (expected_video_info, expected_formats)
+        mock_query_service.get_available_formats.return_value = (
+            expected_video_info, expected_formats
+        )
 
         # Act
         video_info, formats = await usecase.execute(youtube_url)
@@ -78,7 +80,9 @@ class TestGetVideoFormatsUseCase:
     async def test_execute_returns_empty_list(
         self, usecase: GetVideoFormatsUseCase, mock_query_service: AsyncMock
     ) -> None:
-        """フォーマットが見つからない場合、空のリストを返すことをテスト"""
+        """
+        フォーマットが見つからない場合、空のリストを返すことをテスト
+        """
         # Arrange
         youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         expected_video_info = VideoInfoDto(
@@ -140,7 +144,9 @@ class TestGetVideoFormatsUseCase:
                 has_video=True,
             ),
         ]
-        mock_query_service.get_available_formats.return_value = (expected_video_info, expected_formats)
+        mock_query_service.get_available_formats.return_value = (
+            expected_video_info, expected_formats
+        )
 
         # Act
         video_info, formats = await usecase.execute(youtube_url)
