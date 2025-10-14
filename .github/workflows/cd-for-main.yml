@@ -28,7 +28,7 @@ jobs:
 
       - name: Login to registry.na2na.dev
         run: |
-          echo "${{ secrets.REGISTRY_NA2NA_DEV_BOT_KEY }}" | docker login registry.na2na.dev -u 'robot$streamshuttle+github-actions' --password-stdin
+          echo "${{ secrets.REGISTRY_NA2NA_DEV_BOT_KEY }}" | docker login registry.na2na.dev -u 'robot$applications+streamshuttle-ci' --password-stdin
 
       - name: Build and push Docker image
         run: |
