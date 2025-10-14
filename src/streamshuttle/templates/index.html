@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="download-section">
+  <form id="download-form">
+    <label for="url-input">YouTube動画URL:</label>
+    <input
+      type="url"
+      id="url-input"
+      name="url"
+      placeholder="https://www.youtube.com/watch?v=..."
+      required
+    >
+    <button type="button" id="fetch-formats-btn">フォーマット取得</button>
+  </form>
+
+  <div id="error-message" class="error hidden"></div>
+
+  <div id="formats-container" class="hidden">
+    <h2>利用可能なフォーマット:</h2>
+    <div id="formats-list"></div>
+  </div>
+
+  <div id="download-container" class="hidden">
+    <button id="download-btn">ダウンロード</button>
+  </div>
+</section>
+{% endblock %}

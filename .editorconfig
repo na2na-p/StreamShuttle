@@ -1,0 +1,64 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# Unix-style newlines with a newline ending every file
+[*]
+indent_style = tab
+indent_size = 2
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+
+# Python files
+[*.py]
+indent_style = space
+indent_size = 4
+
+# TOML files (pyproject.toml)
+[*.toml]
+indent_style = space
+indent_size = 2
+
+# YAML files (docker-compose.yml, .github/workflows/*.yml)
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+indent_style = space
+indent_size = 2
+
+# JSON files
+[*.json]
+indent_style = space
+indent_size = 2
+
+# Dockerfile
+[Dockerfile*]
+indent_style = space
+indent_size = 4
+
+# Shell scripts
+[*.sh]
+indent_style = space
+indent_size = 2
+
+# HTML files
+[*.html]
+indent_style = space
+indent_size = 2
+
+# CSS files
+[*.css]
+indent_style = space
+indent_size = 2
+
+# JavaScript files
+[*.js]
+indent_style = space
+indent_size = 2
