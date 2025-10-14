@@ -14,6 +14,7 @@ from streamshuttle.infrastructure.query_service.video_format_query_service impor
     VideoFormatQueryService,
 )
 from streamshuttle.shared.exceptions import InvalidUrlError, YouTubeResolverError
+from streamshuttle.usecase.dto.video_info_dto import VideoInfoDto
 
 
 @pytest.fixture
@@ -57,14 +58,15 @@ async def test_video_format_query_service_get_available_formats_returns_format_l
 
     with patch.object(query_service, "_extract_info", return_value=mock_info):
         # Act
-        result = await query_service.get_available_formats(youtube_url=youtube_url)
+        video_info, formats = await query_service.get_available_formats(youtube_url=youtube_url)
 
     # Assert
-    assert len(result) == 2
-    assert result[0].format_id == "137"
-    assert result[0].quality == "1080p"
-    assert result[0].codec == "h264"
-    assert result[1].format_id == "248"
+    assert isinstance(video_info, VideoInfoDto)
+    assert len(formats) == 2
+    assert formats[0].format_id == "137"
+    assert formats[0].quality == "1080p"
+    assert formats[0].codec == "h264"
+    assert formats[1].format_id == "248"
 
 
 async def test_video_format_query_service_get_available_formats_returns_empty_list_for_no_formats(
@@ -84,10 +86,11 @@ async def test_video_format_query_service_get_available_formats_returns_empty_li
 
     with patch.object(query_service, "_extract_info", return_value=mock_info):
         # Act
-        result = await query_service.get_available_formats(youtube_url=youtube_url)
+        video_info, formats = await query_service.get_available_formats(youtube_url=youtube_url)
 
     # Assert
-    assert len(result) == 0
+    assert isinstance(video_info, VideoInfoDto)
+    assert len(formats) == 0
 
 
 async def test_video_format_query_service_get_available_formats_skips_incomplete_formats(
@@ -119,11 +122,12 @@ async def test_video_format_query_service_get_available_formats_skips_incomplete
 
     with patch.object(query_service, "_extract_info", return_value=mock_info):
         # Act
-        result = await query_service.get_available_formats(youtube_url=youtube_url)
+        video_info, formats = await query_service.get_available_formats(youtube_url=youtube_url)
 
     # Assert
-    assert len(result) == 1
-    assert result[0].format_id == "137"
+    assert isinstance(video_info, VideoInfoDto)
+    assert len(formats) == 1
+    assert formats[0].format_id == "137"
 
 
 async def test_video_format_query_service_get_available_formats_raises_invalid_url_exception(
@@ -217,13 +221,14 @@ async def test_video_format_query_service_filters_out_hls_formats(query_service)
 
     with patch.object(query_service, "_extract_info", return_value=mock_info):
         # Act
-        result = await query_service.get_available_formats(youtube_url=youtube_url)
+        video_info, formats = await query_service.get_available_formats(youtube_url=youtube_url)
 
     # Assert
-    assert len(result) == 1
-    assert result[0].format_id == "137"
-    assert result[0].quality == "1080p"
-    assert result[0].codec == "h264"
+    assert isinstance(video_info, VideoInfoDto)
+    assert len(formats) == 1
+    assert formats[0].format_id == "137"
+    assert formats[0].quality == "1080p"
+    assert formats[0].codec == "h264"
 
 
 async def test_video_format_query_service_sets_has_audio_and_has_video_flags(query_service):
@@ -276,26 +281,27 @@ async def test_video_format_query_service_sets_has_audio_and_has_video_flags(que
 
     with patch.object(query_service, "_extract_info", return_value=mock_info):
         # Act
-        result = await query_service.get_available_formats(youtube_url=youtube_url)
+        video_info, formats = await query_service.get_available_formats(youtube_url=youtube_url)
 
     # Assert
-    assert len(result) == 4
+    assert isinstance(video_info, VideoInfoDto)
+    assert len(formats) == 4
 
-    assert result[0].format_id == "22"
-    assert result[0].has_audio is True
-    assert result[0].has_video is True
+    assert formats[0].format_id == "22"
+    assert formats[0].has_audio is True
+    assert formats[0].has_video is True
 
-    assert result[1].format_id == "137"
-    assert result[1].has_audio is False
-    assert result[1].has_video is True
+    assert formats[1].format_id == "137"
+    assert formats[1].has_audio is False
+    assert formats[1].has_video is True
 
-    assert result[2].format_id == "140"
-    assert result[2].has_audio is True
-    assert result[2].has_video is False
+    assert formats[2].format_id == "140"
+    assert formats[2].has_audio is True
+    assert formats[2].has_video is False
 
-    assert result[3].format_id == "999"
-    assert result[3].has_audio is False
-    assert result[3].has_video is False
+    assert formats[3].format_id == "999"
+    assert formats[3].has_audio is False
+    assert formats[3].has_video is False
 
 
 async def test_video_format_query_service_does_not_filter_http_formats(query_service):
@@ -340,13 +346,14 @@ async def test_video_format_query_service_does_not_filter_http_formats(query_ser
 
     with patch.object(query_service, "_extract_info", return_value=mock_info):
         # Act
-        result = await query_service.get_available_formats(youtube_url=youtube_url)
+        video_info, formats = await query_service.get_available_formats(youtube_url=youtube_url)
 
     # Assert
-    assert len(result) == 3
-    assert result[0].format_id == "137"
-    assert result[0].codec == "h264"
-    assert result[1].format_id == "248"
-    assert result[1].codec == "vp9"
-    assert result[2].format_id == "140"
-    assert result[2].codec == "unknown"
+    assert isinstance(video_info, VideoInfoDto)
+    assert len(formats) == 3
+    assert formats[0].format_id == "137"
+    assert formats[0].codec == "h264"
+    assert formats[1].format_id == "248"
+    assert formats[1].codec == "vp9"
+    assert formats[2].format_id == "140"
+    assert formats[2].codec == "unknown"

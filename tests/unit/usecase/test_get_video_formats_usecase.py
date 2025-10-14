@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from streamshuttle.usecase.dto.video_format_dto import VideoFormatDto
+from streamshuttle.usecase.dto.video_info_dto import VideoInfoDto
 from streamshuttle.usecase.query.get_video_formats_usecase import GetVideoFormatsUseCase
 
 
@@ -31,6 +32,11 @@ class TestGetVideoFormatsUseCase:
         """フォーマット一覧を取得できることをテスト"""
         # Arrange
         youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        expected_video_info = VideoInfoDto(
+            video_id="dQw4w9WgXcQ",
+            title="Test Video",
+            thumbnail_url="https://example.com/thumb.jpg"
+        )
         expected_formats = [
             VideoFormatDto(
                 format_id="137",
@@ -57,14 +63,17 @@ class TestGetVideoFormatsUseCase:
                 has_video=True,
             ),
         ]
-        mock_query_service.get_available_formats.return_value = expected_formats
+        mock_query_service.get_available_formats.return_value = (expected_video_info, expected_formats)
 
         # Act
-        result = await usecase.execute(youtube_url)
+        video_info, formats = await usecase.execute(youtube_url)
 
         # Assert
-        assert result == expected_formats
-        mock_query_service.get_available_formats.assert_called_once_with(youtube_url)
+        assert video_info == expected_video_info
+        assert formats == expected_formats
+        mock_query_service.get_available_formats.assert_called_once_with(
+            youtube_url
+        )
 
     async def test_execute_returns_empty_list(
         self, usecase: GetVideoFormatsUseCase, mock_query_service: AsyncMock
@@ -72,14 +81,22 @@ class TestGetVideoFormatsUseCase:
         """フォーマットが見つからない場合、空のリストを返すことをテスト"""
         # Arrange
         youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-        mock_query_service.get_available_formats.return_value = []
+        expected_video_info = VideoInfoDto(
+            video_id="dQw4w9WgXcQ",
+            title="Test Video",
+            thumbnail_url="https://example.com/thumb.jpg"
+        )
+        mock_query_service.get_available_formats.return_value = (expected_video_info, [])
 
         # Act
-        result = await usecase.execute(youtube_url)
+        video_info, formats = await usecase.execute(youtube_url)
 
         # Assert
-        assert result == []
-        mock_query_service.get_available_formats.assert_called_once_with(youtube_url)
+        assert video_info == expected_video_info
+        assert formats == []
+        mock_query_service.get_available_formats.assert_called_once_with(
+            youtube_url
+        )
 
     async def test_execute_calls_query_service_correctly(
         self, usecase: GetVideoFormatsUseCase, mock_query_service: AsyncMock
@@ -87,13 +104,20 @@ class TestGetVideoFormatsUseCase:
         """QueryServiceが正しく呼び出されることをテスト"""
         # Arrange
         youtube_url = "https://www.youtube.com/watch?v=test_video"
-        mock_query_service.get_available_formats.return_value = []
+        expected_video_info = VideoInfoDto(
+            video_id="test_video",
+            title="Test Video",
+            thumbnail_url="https://example.com/thumb.jpg"
+        )
+        mock_query_service.get_available_formats.return_value = (expected_video_info, [])
 
         # Act
         await usecase.execute(youtube_url)
 
         # Assert
-        mock_query_service.get_available_formats.assert_called_once_with(youtube_url)
+        mock_query_service.get_available_formats.assert_called_once_with(
+            youtube_url
+        )
 
     async def test_execute_with_different_url_format(
         self, usecase: GetVideoFormatsUseCase, mock_query_service: AsyncMock
@@ -101,6 +125,11 @@ class TestGetVideoFormatsUseCase:
         """異なるURL形式でも正しく動作することをテスト"""
         # Arrange
         youtube_url = "https://youtu.be/dQw4w9WgXcQ"
+        expected_video_info = VideoInfoDto(
+            video_id="dQw4w9WgXcQ",
+            title="Test Video",
+            thumbnail_url="https://example.com/thumb.jpg"
+        )
         expected_formats = [
             VideoFormatDto(
                 format_id="22",
@@ -111,11 +140,14 @@ class TestGetVideoFormatsUseCase:
                 has_video=True,
             ),
         ]
-        mock_query_service.get_available_formats.return_value = expected_formats
+        mock_query_service.get_available_formats.return_value = (expected_video_info, expected_formats)
 
         # Act
-        result = await usecase.execute(youtube_url)
+        video_info, formats = await usecase.execute(youtube_url)
 
         # Assert
-        assert result == expected_formats
-        mock_query_service.get_available_formats.assert_called_once_with(youtube_url)
+        assert video_info == expected_video_info
+        assert formats == expected_formats
+        mock_query_service.get_available_formats.assert_called_once_with(
+            youtube_url
+        )

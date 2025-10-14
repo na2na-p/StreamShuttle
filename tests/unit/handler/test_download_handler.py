@@ -12,10 +12,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from streamshuttle.di.container import (
+    get_redis_dao,
     get_resolve_youtube_url_use_case,
     get_video_formats_use_case,
 )
 from streamshuttle.handler.download_handler import router
+from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.shared.csrf_token import generate_csrf_token
 from streamshuttle.shared.exceptions import (
     InvalidUrlError,
@@ -24,6 +26,7 @@ from streamshuttle.shared.exceptions import (
 )
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import ResolveYoutubeUrlUseCase
 from streamshuttle.usecase.dto.video_format_dto import VideoFormatDto
+from streamshuttle.usecase.dto.video_info_dto import VideoInfoDto
 from streamshuttle.usecase.query.get_video_formats_usecase import GetVideoFormatsUseCase
 
 
@@ -67,22 +70,35 @@ def mock_resolve_use_case():
 
 
 @pytest.fixture
-def client(app, mock_get_formats_use_case, mock_resolve_use_case):
+def mock_redis_dao():
+    """
+    モックされたRedisDAOを作成します
+
+    Returns:
+        AsyncMock: RedisDAOのモック
+    """
+    return AsyncMock(spec=RedisDao)
+
+
+@pytest.fixture
+def client(app, mock_get_formats_use_case, mock_resolve_use_case, mock_redis_dao):
     """
     テスト用クライアントを作成します
 
-    依存性オーバーライドを使用して、UseCaseをモックに置き換えます。
+    依存性オーバーライドを使用して、UseCaseとDAOをモックに置き換えます。
 
     Args:
         app: FastAPIアプリケーション
         mock_get_formats_use_case: モックされたGetVideoFormatsUseCase
         mock_resolve_use_case: モックされたResolveYoutubeUrlUseCase
+        mock_redis_dao: モックされたRedisDAO
 
     Returns:
         TestClient: FastAPI TestClient
     """
     app.dependency_overrides[get_video_formats_use_case] = lambda: mock_get_formats_use_case
     app.dependency_overrides[get_resolve_youtube_url_use_case] = lambda: mock_resolve_use_case
+    app.dependency_overrides[get_redis_dao] = lambda: mock_redis_dao
     return TestClient(app)
 
 
@@ -96,6 +112,11 @@ def test_get_formats_success(client, mock_get_formats_use_case):
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    video_info = VideoInfoDto(
+        video_id="dQw4w9WgXcQ",
+        title="Test Video",
+        thumbnail_url="https://example.com/thumb.jpg"
+    )
     formats = [
         VideoFormatDto(
             format_id="137",
@@ -114,7 +135,7 @@ def test_get_formats_success(client, mock_get_formats_use_case):
             has_video=True,
         ),
     ]
-    mock_get_formats_use_case.execute.return_value = formats
+    mock_get_formats_use_case.execute.return_value = (video_info, formats)
 
     # Act
     response = client.get(f"/formats?url={youtube_url}")
@@ -143,7 +164,12 @@ def test_get_formats_with_empty_list(client, mock_get_formats_use_case):
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    mock_get_formats_use_case.execute.return_value = []
+    video_info = VideoInfoDto(
+        video_id="dQw4w9WgXcQ",
+        title="Test Video",
+        thumbnail_url="https://example.com/thumb.jpg"
+    )
+    mock_get_formats_use_case.execute.return_value = (video_info, [])
 
     # Act
     response = client.get(f"/formats?url={youtube_url}")
@@ -422,12 +448,17 @@ def test_download_with_invalid_referer(client, mock_resolve_use_case):
     assert "Invalid request origin." in response.json()["detail"]
 
 
-def test_get_formats_returns_csrf_token(client, mock_get_formats_use_case):
+def test_get_formats_returns_csrf_token(client, mock_get_formats_use_case, mock_redis_dao):
     """
     /formatsエンドポイントがCSRFトークンを返すことを検証
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    video_info = VideoInfoDto(
+        video_id="dQw4w9WgXcQ",
+        title="Test Video",
+        thumbnail_url="https://example.com/thumb.jpg"
+    )
     mock_formats = [
         VideoFormatDto(
             format_id="137",
@@ -438,7 +469,8 @@ def test_get_formats_returns_csrf_token(client, mock_get_formats_use_case):
             has_video=True,
         )
     ]
-    mock_get_formats_use_case.execute.return_value = mock_formats
+    mock_get_formats_use_case.execute.return_value = (video_info, mock_formats)
+    mock_redis_dao.set.return_value = None
 
     # Act
     response = client.get(f"/formats?url={youtube_url}")
@@ -451,7 +483,7 @@ def test_get_formats_returns_csrf_token(client, mock_get_formats_use_case):
     assert len(data["csrf_token"]) > 0
 
 
-def test_download_with_format_id(client, mock_resolve_use_case):
+def test_download_with_format_id(client, mock_resolve_use_case, mock_redis_dao):
     """
     正常系: format_idパラメータが渡された場合、UseCaseに正しく渡されることを検証します
 
@@ -464,6 +496,7 @@ def test_download_with_format_id(client, mock_resolve_use_case):
     format_id = "137"
     resolved_url = "https://rr1---sn-example.googlevideo.com/videoplayback?..."
     mock_resolve_use_case.execute.return_value = resolved_url
+    mock_redis_dao.get.return_value = None
     csrf_token = generate_csrf_token()
 
     # Act
