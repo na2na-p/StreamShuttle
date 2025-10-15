@@ -65,11 +65,11 @@ def client(app, mock_use_case):
 
 def test_resolve_url_success(client, mock_use_case):
     """
-    正常系: YouTube URLの解決が成功し、プレーンテキストでURLが返されることを検証します
+    正常系: YouTube URLの解決が成功し、302リダイレクトが返されることを検証します
 
     UseCaseが正常に解決されたURLを返す場合、
-    エンドポイントは200 OKを返し、
-    Content-Typeがtext/plainで、解決済みURLがレスポンスボディに含まれることを確認します。
+    エンドポイントは302 Foundを返し、
+    Locationヘッダーに解決済みURLが設定されることを確認します。
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -80,9 +80,8 @@ def test_resolve_url_success(client, mock_use_case):
     response = client.get(f"/resolve?url={youtube_url}", follow_redirects=False)
 
     # Assert
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "text/plain; charset=utf-8"
-    assert response.text == resolved_url
+    assert response.status_code == 302
+    assert response.headers["location"] == resolved_url
     mock_use_case.execute.assert_called_once_with(youtube_url)
 
 

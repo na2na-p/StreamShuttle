@@ -8,7 +8,7 @@ FastAPIのエンドポイントを提供し、YouTube URLを解決してスト�
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import RedirectResponse
 
 from streamshuttle.di.container import get_resolve_youtube_url_use_case
 from streamshuttle.shared.config import config
@@ -32,16 +32,16 @@ async def resolve_url(
     request: Request,
     url: str = Query(..., description="YouTube動画URL"),
     use_case: ResolveYoutubeUrlUseCase = Depends(get_resolve_youtube_url_use_case),
-) -> PlainTextResponse:
+) -> RedirectResponse:
     """
-    YouTube URLを解決し、ストリームURLをプレーンテキストで返します
+    YouTube URLを解決し、ストリームURLへリダイレクトします
 
     VRChat動画プレイヤー（YamaPlayer等）専用のエンドポイントです。
     YouTube動画URLを受け取り、yt-dlpを使用して直接ストリームURLを解決し、
-    プレーンテキスト形式（Content-Type: text/plain）で返します。
+    HTTPステータスコード302 Foundで解決済みストリームURLへリダイレクトします。
 
-    VRChatのyt-dlpは307リダイレクトを適切に処理できないため、
-    プレーンテキストでURLを返すことで互換性を確保します。
+    VRChatのyt-dlpとの互換性のため、302 Foundリダイレクトを使用します。
+    （307 Temporary Redirectは一部の古いyt-dlpバージョンで問題があるため）
 
     キャッシュが有効な場合はキャッシュから返され、期限切れの場合は再解決されます。
 
@@ -53,7 +53,7 @@ async def resolve_url(
         use_case: ResolveYoutubeUrlUseCase（DIコンテナから注入）
 
     Returns:
-        PlainTextResponse: 解決済みストリームURLをプレーンテキストで返す
+        RedirectResponse: 解決済みストリームURLへの302 Foundリダイレクト
 
     Raises:
         HTTPException: 以下の場合にHTTPエラーを返します
@@ -71,7 +71,7 @@ async def resolve_url(
             raise InvalidUrlError(f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）")
 
         resolved_url = await use_case.execute(url)
-        return PlainTextResponse(content=resolved_url, media_type="text/plain")
+        return RedirectResponse(url=resolved_url, status_code=302)
     except InvalidVideoIdError:
         # ログに詳細を記録
         logger.warning(f"Invalid video ID: url={url}", exc_info=True)
