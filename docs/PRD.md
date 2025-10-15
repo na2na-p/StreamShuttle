@@ -111,10 +111,10 @@ yt-dlpでのURL解決エラー率が一定の閾値を超えた場合、監視�
 
 * GET /resolve エンドポイントを実装する。
 * url クエリパラメータで対象のYouTube URLを受け取る。
-* URL解決に成功した場合、HTTPステータスコード 302 Found と Location ヘッダーに解決済みのストリームURLを設定して応答する。
+* URL解決に成功した場合、HTTPステータスコード 307 Temporary Redirect と Location ヘッダーに解決済みのストリームURLを設定して応答する。
 * URL解決に失敗した場合、400番台または500番台のステータスコードと、エラー内容を示すJSONを返す。
 * **実装上の考慮事項**:
-  - VRChatのyt-dlpとの互換性のため、302 Foundリダイレクトを使用している。（307 Temporary Redirectは一部の古いyt-dlpバージョンで適切に処理されず、プレーンテキストレスポンスはyt-dlpがURLを抽出できないため）
+  - VRChatのyt-dlpとの互換性を確保しつつ、307 Temporary Redirectを使用している。プレーンテキストレスポンスはyt-dlpがURLを抽出できないため、リダイレクト方式を採用している。
   - Unity Video PlayerはHLS (.m3u8) 非対応のため、yt-dlpのフォーマット選択でプログレッシブMP4を優先する。これにより、Unity Video PlayerとAVPro Video Playerの両方で再生可能なURLを提供する。
 
 ### バックエンド

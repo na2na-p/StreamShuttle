@@ -38,10 +38,7 @@ async def resolve_url(
 
     VRChat動画プレイヤー（YamaPlayer等）専用のエンドポイントです。
     YouTube動画URLを受け取り、yt-dlpを使用して直接ストリームURLを解決し、
-    HTTPステータスコード302 Foundで解決済みストリームURLへリダイレクトします。
-
-    VRChatのyt-dlpとの互換性のため、302 Foundリダイレクトを使用します。
-    （307 Temporary Redirectは一部の古いyt-dlpバージョンで問題があるため）
+    HTTPステータスコード307 Temporary Redirectで解決済みストリームURLへリダイレクトします。
 
     キャッシュが有効な場合はキャッシュから返され、期限切れの場合は再解決されます。
 
@@ -53,7 +50,7 @@ async def resolve_url(
         use_case: ResolveYoutubeUrlUseCase（DIコンテナから注入）
 
     Returns:
-        RedirectResponse: 解決済みストリームURLへの302 Foundリダイレクト
+        RedirectResponse: 解決済みストリームURLへの307 Temporary Redirectリダイレクト
 
     Raises:
         HTTPException: 以下の場合にHTTPエラーを返します
@@ -71,7 +68,7 @@ async def resolve_url(
             raise InvalidUrlError(f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）")
 
         resolved_url = await use_case.execute(url)
-        return RedirectResponse(url=resolved_url, status_code=302)
+        return RedirectResponse(url=resolved_url, status_code=307)
     except InvalidVideoIdError:
         # ログに詳細を記録
         logger.warning(f"Invalid video ID: url={url}", exc_info=True)

@@ -146,8 +146,8 @@ def test_resolve_endpoint_with_real_youtube_url(client):
         "/resolve?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ", follow_redirects=False
     )
 
-    # 302 Foundまたはエラーが返されることを確認
-    assert response.status_code in [302, 400, 502, 500]
+    # 307 Temporary Redirectまたはエラーが返されることを確認
+    assert response.status_code in [307, 400, 502, 500]
 
 
 def test_formats_endpoint_requires_url_parameter(client):
