@@ -202,12 +202,21 @@ async def download(
             raise HTTPException(status_code=403, detail="Invalid or expired CSRF token.")
 
         # Refererチェック
+        # X-Forwarded-Hostヘッダーからオリジンを構築
+        forwarded_host = request.headers.get("x-forwarded-host")
+        if forwarded_host:
+            forwarded_proto = request.headers.get("x-forwarded-proto", "https")
+            forwarded_origin = f"{forwarded_proto}://{forwarded_host}/"
+            allowed_origins = [str(request.base_url), forwarded_origin, *config.ALLOWED_ORIGINS]
+        else:
+            allowed_origins = [str(request.base_url), *config.ALLOWED_ORIGINS]
+
         referer = request.headers.get("referer", "")
-        if not referer or not any(
-            referer.startswith(origin)
-            for origin in [str(request.base_url), *config.ALLOWED_ORIGINS]
-        ):
-            logger.warning(f"Invalid referer in download: referer={referer}, url={url}")
+        if not referer or not any(referer.startswith(origin) for origin in allowed_origins):
+            logger.warning(
+                f"Invalid referer in download: referer={referer}, "
+                f"allowed_origins={allowed_origins}, url={url}"
+            )
             raise HTTPException(status_code=403, detail="Invalid request origin.")
 
         # URL長制限チェック（DoS攻撃対策）

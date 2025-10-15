@@ -32,6 +32,9 @@ class RedisDao:
             port: Redisサーバーのポート番号
             db: 使用するRedisデータベース番号（0-15）
         """
+        self._host = host
+        self._port = port
+        self._db = db
         self._redis: redis.Redis = redis.Redis(
             host=host,
             port=port,
@@ -54,7 +57,11 @@ class RedisDao:
         try:
             await self._redis.setex(name=key, time=ttl, value=value)
         except redis.RedisError as e:
-            raise CacheError(f"Redisへの保存に失敗しました: key={key}") from e
+            raise CacheError(
+                f"Redisへの保存に失敗しました: "
+                f"host={self._host}, port={self._port}, db={self._db}, "
+                f"key={key}, error={str(e)}"
+            ) from e
 
     async def get(self, key: str) -> str | None:
         """
@@ -73,7 +80,11 @@ class RedisDao:
             result = await self._redis.get(name=key)
             return result
         except redis.RedisError as e:
-            raise CacheError(f"Redisからの取得に失敗しました: key={key}") from e
+            raise CacheError(
+                f"Redisからの取得に失敗しました: "
+                f"host={self._host}, port={self._port}, db={self._db}, "
+                f"key={key}, error={str(e)}"
+            ) from e
 
     async def delete(self, key: str) -> None:
         """
@@ -90,7 +101,11 @@ class RedisDao:
         try:
             await self._redis.delete(key)
         except redis.RedisError as e:
-            raise CacheError(f"Redisからの削除に失敗しました: key={key}") from e
+            raise CacheError(
+                f"Redisからの削除に失敗しました: "
+                f"host={self._host}, port={self._port}, db={self._db}, "
+                f"key={key}, error={str(e)}"
+            ) from e
 
     async def exists(self, key: str) -> bool:
         """
@@ -109,7 +124,11 @@ class RedisDao:
             result = await self._redis.exists(key)
             return bool(result)
         except redis.RedisError as e:
-            raise CacheError(f"Redisの存在確認に失敗しました: key={key}") from e
+            raise CacheError(
+                f"Redisの存在確認に失敗しました: "
+                f"host={self._host}, port={self._port}, db={self._db}, "
+                f"key={key}, error={str(e)}"
+            ) from e
 
     async def close(self) -> None:
         """

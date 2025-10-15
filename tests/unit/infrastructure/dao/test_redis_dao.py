@@ -181,7 +181,7 @@ async def test_redis_dao_set_raises_cache_exception_on_redis_error(redis_dao, mo
 
     Arrange: Redisクライアントのsetexメソッドをモックしてエラーを発生させる
     Act: RedisDao.set()を呼び出す
-    Assert: CacheErrorが発生することを確認
+    Assert: CacheErrorが発生し、接続情報と元のエラー内容が含まれることを確認
     """
     # Arrange
     mocker.patch.object(redis_dao._redis, "setex", side_effect=RedisError("Redis connection error"))
@@ -190,7 +190,13 @@ async def test_redis_dao_set_raises_cache_exception_on_redis_error(redis_dao, mo
     with pytest.raises(CacheError) as exc_info:
         await redis_dao.set(key="test_key", value="test_value", ttl=3600)
 
-    assert "Redisへの保存に失敗しました" in str(exc_info.value)
+    error_message = str(exc_info.value)
+    assert "Redisへの保存に失敗しました" in error_message
+    assert "host=localhost" in error_message
+    assert "port=6379" in error_message
+    assert "db=0" in error_message
+    assert "key=test_key" in error_message
+    assert "Redis connection error" in error_message
 
 
 async def test_redis_dao_get_raises_cache_exception_on_redis_error(redis_dao, mocker):
@@ -199,7 +205,7 @@ async def test_redis_dao_get_raises_cache_exception_on_redis_error(redis_dao, mo
 
     Arrange: Redisクライアントのgetメソッドをモックしてエラーを発生させる
     Act: RedisDao.get()を呼び出す
-    Assert: CacheErrorが発生することを確認
+    Assert: CacheErrorが発生し、接続情報と元のエラー内容が含まれることを確認
     """
     # Arrange
     mocker.patch.object(redis_dao._redis, "get", side_effect=RedisError("Redis connection error"))
@@ -208,7 +214,13 @@ async def test_redis_dao_get_raises_cache_exception_on_redis_error(redis_dao, mo
     with pytest.raises(CacheError) as exc_info:
         await redis_dao.get(key="test_key")
 
-    assert "Redisからの取得に失敗しました" in str(exc_info.value)
+    error_message = str(exc_info.value)
+    assert "Redisからの取得に失敗しました" in error_message
+    assert "host=localhost" in error_message
+    assert "port=6379" in error_message
+    assert "db=0" in error_message
+    assert "key=test_key" in error_message
+    assert "Redis connection error" in error_message
 
 
 async def test_redis_dao_delete_raises_cache_exception_on_redis_error(redis_dao, mocker):
@@ -217,7 +229,7 @@ async def test_redis_dao_delete_raises_cache_exception_on_redis_error(redis_dao,
 
     Arrange: Redisクライアントのdeleteメソッドをモックしてエラーを発生させる
     Act: RedisDao.delete()を呼び出す
-    Assert: CacheErrorが発生することを確認
+    Assert: CacheErrorが発生し、接続情報と元のエラー内容が含まれることを確認
     """
     # Arrange
     mocker.patch.object(
@@ -228,7 +240,13 @@ async def test_redis_dao_delete_raises_cache_exception_on_redis_error(redis_dao,
     with pytest.raises(CacheError) as exc_info:
         await redis_dao.delete(key="test_key")
 
-    assert "Redisからの削除に失敗しました" in str(exc_info.value)
+    error_message = str(exc_info.value)
+    assert "Redisからの削除に失敗しました" in error_message
+    assert "host=localhost" in error_message
+    assert "port=6379" in error_message
+    assert "db=0" in error_message
+    assert "key=test_key" in error_message
+    assert "Redis connection error" in error_message
 
 
 async def test_redis_dao_exists_raises_cache_exception_on_redis_error(redis_dao, mocker):
@@ -237,7 +255,7 @@ async def test_redis_dao_exists_raises_cache_exception_on_redis_error(redis_dao,
 
     Arrange: Redisクライアントのexistsメソッドをモックしてエラーを発生させる
     Act: RedisDao.exists()を呼び出す
-    Assert: CacheErrorが発生することを確認
+    Assert: CacheErrorが発生し、接続情報と元のエラー内容が含まれることを確認
     """
     # Arrange
     mocker.patch.object(
@@ -248,4 +266,10 @@ async def test_redis_dao_exists_raises_cache_exception_on_redis_error(redis_dao,
     with pytest.raises(CacheError) as exc_info:
         await redis_dao.exists(key="test_key")
 
-    assert "Redisの存在確認に失敗しました" in str(exc_info.value)
+    error_message = str(exc_info.value)
+    assert "Redisの存在確認に失敗しました" in error_message
+    assert "host=localhost" in error_message
+    assert "port=6379" in error_message
+    assert "db=0" in error_message
+    assert "key=test_key" in error_message
+    assert "Redis connection error" in error_message
