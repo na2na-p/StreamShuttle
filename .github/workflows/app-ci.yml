@@ -56,7 +56,6 @@ jobs:
           path: htmlcov/
 
   docker-build:
-    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
