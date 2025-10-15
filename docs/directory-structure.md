@@ -33,7 +33,6 @@ Template（クライアント側） → Handler（バックエンドAPI）
 │   └── rules/                        # DDDアーキテクチャルール定義
 ├── .dockerignore
 ├── .gitignore
-├── .python-version
 ├── .tool-versions
 ├── Dockerfile
 ├── README.md

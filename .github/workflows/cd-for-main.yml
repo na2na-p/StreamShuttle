@@ -19,9 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    outputs:
-      image_tag: ${{ steps.output_tags.outputs.image_tag }}
-
+    strategy:
+      matrix:
+        platform:
+          - linux/arm64
+          - linux/amd64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -36,18 +38,50 @@ jobs:
         run: |
           echo "${{ secrets.REGISTRY_NA2NA_DEV_BOT_KEY }}" | docker login registry.na2na.dev -u 'robot$applications+streamshuttle-ci' --password-stdin
 
+      - name: Set platform suffix
+        id: platform
+        run: |
+          # linux/arm64 -> arm64, linux/amd64 -> amd64
+          PLATFORM_SUFFIX=$(echo ${{ matrix.platform }} | cut -d'/' -f2)
+          echo "suffix=${PLATFORM_SUFFIX}" >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
+        env:
+          DOCKER_BUILDKIT: 1
         run: |
           # Use regular docker build + push (buildx has auth issues with registry.na2na.dev)
-          docker build --platform linux/arm64 \
+          docker build --platform ${{ matrix.platform }} \
             --target production \
-            -t registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA \
+            -t registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA-${{ steps.platform.outputs.suffix }} \
+            -t registry.na2na.dev/applications/streamshuttle:latest-${{ steps.platform.outputs.suffix }} \
             .
-          docker push registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA
 
-          # Tag and push latest image
-          docker tag registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA registry.na2na.dev/applications/streamshuttle:latest
-          docker push registry.na2na.dev/applications/streamshuttle:latest
+          docker push registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA-${{ steps.platform.outputs.suffix }}
+          docker push registry.na2na.dev/applications/streamshuttle:latest-${{ steps.platform.outputs.suffix }}
+
+  create-manifest:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      image_tag: ${{ steps.output_tags.outputs.image_tag }}
+    steps:
+      - name: Login to registry.na2na.dev
+        run: |
+          echo "${{ secrets.REGISTRY_NA2NA_DEV_BOT_KEY }}" | docker login registry.na2na.dev -u 'robot$applications+streamshuttle-ci' --password-stdin
+
+      - name: Create and push manifest list
+        run: |
+          docker manifest create registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA \
+            registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA-arm64 \
+            registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA-amd64
+          docker manifest push registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA
+
+          docker manifest create registry.na2na.dev/applications/streamshuttle:latest \
+            registry.na2na.dev/applications/streamshuttle:latest-arm64 \
+            registry.na2na.dev/applications/streamshuttle:latest-amd64
+          docker manifest push registry.na2na.dev/applications/streamshuttle:latest
 
       - name: Output image tags
         id: output_tags
@@ -62,7 +96,7 @@ jobs:
           echo "| \`latest\` | \`registry.na2na.dev/applications/streamshuttle:latest\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📋 イメージ詳細" >> $GITHUB_STEP_SUMMARY
-          echo "- **プラットフォーム**: linux/arm64" >> $GITHUB_STEP_SUMMARY
+          echo "- **プラットフォーム**: linux/arm64, linux/amd64" >> $GITHUB_STEP_SUMMARY
           echo "- **ベースイメージ**: python:3.14.0-slim" >> $GITHUB_STEP_SUMMARY
           echo "- **コミット**: $GITHUB_SHA" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -74,7 +108,7 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
   display-results:
-    needs: build-and-push
+    needs: create-manifest
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -83,13 +117,13 @@ jobs:
           echo "## 🚀 デプロイ結果" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ needs.build-and-push.result }}" = "success" ]; then
+          if [ "${{ needs.create-manifest.result }}" = "success" ]; then
             echo "✅ **イメージビルド**: 正常に完了しました" >> $GITHUB_STEP_SUMMARY
-            echo "   - イメージタグ: \`${{ needs.build-and-push.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "   - イメージURI: \`registry.na2na.dev/applications/streamshuttle:${{ needs.build-and-push.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "   - イメージタグ: \`${{ needs.create-manifest.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "   - イメージURI: \`registry.na2na.dev/applications/streamshuttle:${{ needs.create-manifest.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **イメージビルド**: 失敗しました" >> $GITHUB_STEP_SUMMARY
           fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**全体ステータス**: ${{ needs.build-and-push.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**全体ステータス**: ${{ needs.create-manifest.result }}" >> $GITHUB_STEP_SUMMARY
