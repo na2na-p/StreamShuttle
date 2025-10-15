@@ -31,7 +31,7 @@ class YoutubeResolver(YoutubeResolverInterface):
         - quiet=Trueでログ出力を抑制
     """
 
-    async def resolve_url(self, youtube_url: str, format_id: str | None = None) -> str:
+    async def resolve_url(self, youtube_url: str, format_id: str | None = None) -> tuple[str, int]:
         """
         YouTube動画URLを直接ストリームURLに解決します
 
@@ -44,19 +44,16 @@ class YoutubeResolver(YoutubeResolverInterface):
             format_id: フォーマットID（オプショナル）
 
         Returns:
-            str: 解決済みの直接ストリームURL
+            tuple[str, int]: (解決済みの直接ストリームURL, TTL秒数)
 
         Raises:
             YouTubeResolverError: YouTube APIへのアクセスまたはURL解決に失敗した場合
             InvalidUrlError: 無効なURLが指定された場合
         """
         try:
-            # 強化されたURL検証（Public利用を前提としたセキュリティ対策）
-            # 1. HTTPスキームのみ許可（file://, data:, javascript: などの危険なスキームを拒否）
             if not youtube_url.startswith(("http://", "https://")):
                 raise InvalidUrlError(f"無効なURLです: {youtube_url}")
 
-            # 2. YouTubeドメインのみ許可（他のドメインへのアクセスを防止）
             parsed_url = urlparse(youtube_url)
             allowed_domains = (
                 "youtube.com",
@@ -68,17 +65,23 @@ class YoutubeResolver(YoutubeResolverInterface):
             if parsed_url.hostname not in allowed_domains:
                 raise InvalidUrlError(f"YouTube URLのみサポートしています: {youtube_url}")
 
-            # yt-dlpは同期処理のため、asyncio.to_threadで非同期化
             resolved_url = await asyncio.to_thread(self._resolve_url_sync, youtube_url, format_id)
+
+            try:
+                ttl_seconds = self._extract_ttl_from_url(resolved_url)
+            except (ValueError, KeyError, IndexError):
+                from streamshuttle.shared.config import config
+
+                ttl_seconds = config.CACHE_TTL_SECONDS
+
         except InvalidUrlError:
-            # URL検証エラーはそのまま再送出（クライアント側のエラー）
             raise
         except yt_dlp.utils.DownloadError as e:
             raise YouTubeResolverError(f"YouTube URLの解決に失敗しました: {youtube_url}") from e
         except Exception as e:
             raise YouTubeResolverError(f"予期しないエラーが発生しました: {youtube_url}") from e
 
-        return resolved_url
+        return resolved_url, ttl_seconds
 
     def _resolve_url_sync(self, youtube_url: str, format_id: str | None = None) -> str:
         """
@@ -91,6 +94,15 @@ class YoutubeResolver(YoutubeResolverInterface):
         video onlyフォーマットが指定された場合は動画のみ、audio+videoフォーマットが
         指定された場合は音声付きのURLを返します。
 
+        format_idが指定されていない場合は、VRChatのUnity Video Player互換性のため、
+        以下の優先順位でフォーマットを選択します：
+        1. プログレッシブHTTPダウンロード（HLS m3u8を除外）のMP4形式
+        2. 上記が利用できない場合、MP4形式全般
+        3. 最終的に最適なフォーマット（bestフォーマット）
+
+        この選択ロジックにより、Unity Video PlayerとAVPro Video Playerの
+        両方で再生可能なストリームURLを提供します。
+
         Args:
             youtube_url: YouTube動画URL
             format_id: フォーマットID（オプショナル）
@@ -102,7 +114,10 @@ class YoutubeResolver(YoutubeResolverInterface):
             yt_dlp.utils.DownloadError: URL解決に失敗した場合
             YouTubeResolverError: URLが取得できなかった場合
         """
-        format_spec = format_id if format_id else "best"
+        if format_id:
+            format_spec = format_id
+        else:
+            format_spec = "best[protocol^=http][protocol!*=m3u8][ext=mp4]/best[ext=mp4]/best"
 
         # yt-dlpオプション（Public利用を前提としたセキュリティ設定）
         ydl_opts = {
@@ -131,3 +146,32 @@ class YoutubeResolver(YoutubeResolverInterface):
             )
 
         return info["url"]
+
+    def _extract_ttl_from_url(self, url: str) -> int:
+        """
+        URLからexpireパラメータを抽出してTTL秒数を計算します
+
+        Args:
+            url: YouTube動画URL（expireパラメータ含む）
+
+        Returns:
+            int: TTL秒数（現在時刻からexpireまでの秒数）
+
+        Raises:
+            ValueError: expireパラメータが見つからない、または無効な場合
+        """
+        from datetime import UTC, datetime
+        from urllib.parse import parse_qs, urlparse
+
+        parsed = urlparse(url)
+        query_params = parse_qs(parsed.query)
+
+        if "expire" not in query_params:
+            raise ValueError("expire parameter not found in URL")
+
+        expire_timestamp = int(query_params["expire"][0])
+        expire_datetime = datetime.fromtimestamp(expire_timestamp, tz=UTC)
+        now = datetime.now(UTC)
+
+        ttl = (expire_datetime - now).total_seconds()
+        return max(0, int(ttl))
