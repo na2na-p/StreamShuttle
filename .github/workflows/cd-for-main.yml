@@ -52,6 +52,8 @@ jobs:
           # Use regular docker build + push (buildx has auth issues with registry.na2na.dev)
           docker build --platform ${{ matrix.platform }} \
             --target production \
+            --cache-from type=gha,scope=build-${{ steps.platform.outputs.suffix }} \
+            --cache-to type=gha,scope=build-${{ steps.platform.outputs.suffix }},mode=max \
             -t registry.na2na.dev/applications/streamshuttle:$GITHUB_SHA-${{ steps.platform.outputs.suffix }} \
             -t registry.na2na.dev/applications/streamshuttle:latest-${{ steps.platform.outputs.suffix }} \
             .
