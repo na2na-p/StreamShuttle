@@ -57,12 +57,14 @@ class JSONFormatter(logging.Formatter):
             # スタックトレースを構造化（各フレームを辞書として格納）
             if exc_traceback:
                 for frame in traceback.extract_tb(exc_traceback):
-                    exception_info["traceback"].append({
-                        "file": frame.filename,
-                        "line": frame.lineno,
-                        "function": frame.name,
-                        "code": frame.line,
-                    })
+                    exception_info["traceback"].append(
+                        {
+                            "file": frame.filename,
+                            "line": frame.lineno,
+                            "function": frame.name,
+                            "code": frame.line,
+                        }
+                    )
 
             # テキスト形式も残す（後方互換性）
             exception_info["traceback_text"] = self.formatException(record.exc_info)
