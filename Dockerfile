@@ -13,7 +13,9 @@ ENV PYTHONUNBUFFERED=1 \
         PYTHONPATH="/app/src"
 
 # ビルドツールとffmpegのインストール（C拡張モジュール（uvloop等）のビルドとメディアマージに必要）
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt \
+        --mount=type=cache,target=/var/lib/apt/lists \
+        apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         ffmpeg \
         && rm -rf /var/lib/apt/lists/*
