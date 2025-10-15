@@ -19,7 +19,7 @@ class YoutubeResolver(ABC):
     """
 
     @abstractmethod
-    async def resolve_url(self, youtube_url: str, format_id: str | None = None) -> str:
+    async def resolve_url(self, youtube_url: str, format_id: str | None = None) -> tuple[str, int]:
         """
         YouTube動画URLを直接ストリームURLに解決します
 
@@ -32,7 +32,7 @@ class YoutubeResolver(ABC):
             format_id: フォーマットID（オプショナル）
 
         Returns:
-            str: 解決済みの直接ストリームURL
+            tuple[str, int]: (解決済みの直接ストリームURL, TTL秒数)
 
         Raises:
             YouTubeResolverException: YouTube APIへのアクセスまたはURL解決に失敗した場合

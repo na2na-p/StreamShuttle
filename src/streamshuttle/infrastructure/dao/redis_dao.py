@@ -130,6 +130,34 @@ class RedisDao:
                 f"key={key}, error={str(e)}"
             ) from e
 
+    async def ttl(self, key: str) -> int | None:
+        """
+        キーの残り有効時間（TTL）を秒単位で取得します
+
+        Args:
+            key: TTLを取得するキー
+
+        Returns:
+            int | None:
+                - 残り秒数（キーが存在しTTLが設定されている場合）
+                - None（キーが存在しない場合）
+                - -1（キーが存在するがTTLが設定されていない場合）
+
+        Raises:
+            CacheError: Redis操作に失敗した場合
+        """
+        try:
+            result = await self._redis.ttl(name=key)
+            if result == -2:
+                return None
+            return result
+        except redis.RedisError as e:
+            raise CacheError(
+                f"RedisからのTTL取得に失敗しました: "
+                f"host={self._host}, port={self._port}, db={self._db}, "
+                f"key={key}, error={str(e)}"
+            ) from e
+
     async def close(self) -> None:
         """
         Redis接続をクローズします

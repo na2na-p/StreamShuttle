@@ -9,7 +9,6 @@ from datetime import UTC, datetime
 
 from streamshuttle.domain.model.stream_url import StreamUrl
 from streamshuttle.domain.repository.stream_url_repository import StreamUrlRepository
-from streamshuttle.shared.config import config
 from streamshuttle.shared.exceptions import InvalidVideoIdError
 from streamshuttle.usecase.external.youtube_resolver import YoutubeResolver
 from streamshuttle.usecase.query_service.stream_url_query_service import StreamUrlQueryService
@@ -65,22 +64,17 @@ class ResolveYoutubeUrlUseCase:
             YouTubeResolverException: YouTube APIへのアクセスに失敗した場合
             CacheException: キャッシュ操作に失敗した場合
         """
-        # 1. video_idを抽出
         video_id = self._extract_video_id(youtube_url)
 
-        # 2. キャッシュを確認
         cached = await self._query_service.find_by_video_id(video_id)
 
-        # 3. キャッシュがあり、期限内の場合
         if cached and cached.expiry_at > datetime.now(UTC):
             return cached.resolved_url
 
-        # 4. キャッシュがない/期限切れの場合
-        resolved_url = await self._youtube_resolver.resolve_url(youtube_url, format_id)
+        resolved_url, ttl_seconds = await self._youtube_resolver.resolve_url(youtube_url, format_id)
 
-        # 5. Aggregateを生成して保存（ファクトリーメソッド使用）
         stream_url = StreamUrl.create(
-            video_id=video_id, resolved_url=resolved_url, ttl_seconds=config.CACHE_TTL_SECONDS
+            video_id=video_id, resolved_url=resolved_url, ttl_seconds=ttl_seconds
         )
         await self._repository.save(stream_url)
 

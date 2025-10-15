@@ -25,9 +25,8 @@ class StreamUrlQueryService(StreamUrlQueryServiceInterface):
     データの取得のみを行います。
 
     注意事項:
-        RedisからTTL情報を正確に取得することは可能ですが、
-        現在の実装ではシンプルさを優先し、expiry_atは
-        現在時刻+デフォルトTTL（6時間）として推定します。
+        expiry_atはRedisのTTLコマンドを使用して正確に取得します。
+        TTL取得に失敗した場合はデフォルトTTL（6時間）にフォールバックします。
 
     Attributes:
         _redis_dao: Redis操作を行うDAOインスタンス
@@ -68,7 +67,13 @@ class StreamUrlQueryService(StreamUrlQueryServiceInterface):
         if cached_url is None:
             return None
 
-        expiry_at = datetime.now(UTC) + timedelta(seconds=config.CACHE_TTL_SECONDS)
+        # Redisから正確なTTLを取得
+        ttl = await self._redis_dao.ttl(key=video_id)
+        if ttl is None or ttl < 0:
+            # キーが存在しないまたはTTLが設定されていない場合はフォールバック
+            ttl = config.CACHE_TTL_SECONDS
+
+        expiry_at = datetime.now(UTC) + timedelta(seconds=ttl)
 
         # DTOを生成して返す
         return StreamUrlDto(

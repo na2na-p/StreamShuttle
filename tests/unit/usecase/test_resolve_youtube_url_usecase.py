@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from streamshuttle.shared.config import config
 from streamshuttle.shared.exceptions import InvalidVideoIdError
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import ResolveYoutubeUrlUseCase
 from streamshuttle.usecase.dto.stream_url_dto import StreamUrlDto
@@ -83,7 +82,7 @@ class TestResolveYoutubeUrlUseCase:
         resolved_url = "https://example.com/new-stream.m3u8"
 
         mock_query_service.find_by_video_id.return_value = None
-        mock_youtube_resolver.resolve_url.return_value = resolved_url
+        mock_youtube_resolver.resolve_url.return_value = (resolved_url, 3600)
 
         # Act
         result = await usecase.execute(youtube_url)
@@ -116,7 +115,7 @@ class TestResolveYoutubeUrlUseCase:
 
         expired_dto = StreamUrlDto(video_id=video_id, resolved_url=expired_url, expiry_at=past_time)
         mock_query_service.find_by_video_id.return_value = expired_dto
-        mock_youtube_resolver.resolve_url.return_value = new_resolved_url
+        mock_youtube_resolver.resolve_url.return_value = (new_resolved_url, 3600)
 
         # Act
         result = await usecase.execute(youtube_url)
@@ -213,9 +212,10 @@ class TestResolveYoutubeUrlUseCase:
         # Arrange
         youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         resolved_url = "https://example.com/stream.m3u8"
+        ttl_seconds = 7200
 
         mock_query_service.find_by_video_id.return_value = None
-        mock_youtube_resolver.resolve_url.return_value = resolved_url
+        mock_youtube_resolver.resolve_url.return_value = (resolved_url, ttl_seconds)
 
         before_execute = datetime.now(UTC)
 
@@ -229,8 +229,8 @@ class TestResolveYoutubeUrlUseCase:
         expiry_at = saved_stream_url.cache_expiry.expiry_at
 
         # TTLが正しい範囲内であることを確認
-        expected_min = before_execute + timedelta(seconds=config.CACHE_TTL_SECONDS)
-        expected_max = after_execute + timedelta(seconds=config.CACHE_TTL_SECONDS)
+        expected_min = before_execute + timedelta(seconds=ttl_seconds)
+        expected_max = after_execute + timedelta(seconds=ttl_seconds)
 
         assert expected_min <= expiry_at <= expected_max
 
@@ -248,7 +248,7 @@ class TestResolveYoutubeUrlUseCase:
         resolved_url = "https://example.com/stream.mp4"
 
         mock_query_service.find_by_video_id.return_value = None
-        mock_youtube_resolver.resolve_url.return_value = resolved_url
+        mock_youtube_resolver.resolve_url.return_value = (resolved_url, 3600)
 
         # Act
         result = await usecase.execute(youtube_url, format_id)

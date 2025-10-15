@@ -27,22 +27,24 @@ def resolver():
 
 async def test_youtube_resolver_resolve_url_returns_stream_url(resolver):
     """
-    正常系: YoutubeResolver.resolve_url()がストリームURLを返すことを確認
+    正常系: YoutubeResolver.resolve_url()がストリームURLとTTLを返すことを確認
 
     Arrange: yt-dlpの_resolve_url_syncをモックしてストリームURLを返す
     Act: YoutubeResolver.resolve_url()を呼び出す
-    Assert: ストリームURLが返されることを確認
+    Assert: ストリームURLとTTLが返されることを確認
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    expected_stream_url = "https://example.com/stream.m3u8"
+    expected_stream_url = "https://example.com/stream.m3u8?expire=1234567890"
 
     with patch.object(resolver, "_resolve_url_sync", return_value=expected_stream_url):
-        # Act
-        result = await resolver.resolve_url(youtube_url=youtube_url)
+        with patch.object(resolver, "_extract_ttl_from_url", return_value=3600):
+            # Act
+            result_url, result_ttl = await resolver.resolve_url(youtube_url=youtube_url)
 
     # Assert
-    assert result == expected_stream_url
+    assert result_url == expected_stream_url
+    assert result_ttl == 3600
 
 
 async def test_youtube_resolver_resolve_url_raises_invalid_url_exception_for_no_scheme(resolver):
@@ -129,45 +131,51 @@ def test_youtube_resolver_resolve_url_sync_raises_youtube_resolver_exception_for
 async def test_youtube_resolver_resolve_url_with_format_id(resolver):
     """
     正常系: format_idが指定された場合、YoutubeResolver.resolve_url()が
-    format_idを含めてストリームURLを返すことを確認
+    format_idを含めてストリームURLとTTLを返すことを確認
 
     Arrange: yt-dlpの_resolve_url_syncをモックしてストリームURLを返す
     Act: YoutubeResolver.resolve_url()にformat_idを指定して呼び出す
-    Assert: ストリームURLが返され、_resolve_url_syncにformat_idが渡されることを確認
+    Assert: ストリームURLとTTLが返され、_resolve_url_syncにformat_idが渡されることを確認
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     format_id = "137"
-    expected_stream_url = "https://example.com/stream.mp4"
+    expected_stream_url = "https://example.com/stream.mp4?expire=1234567890"
 
     with patch.object(resolver, "_resolve_url_sync", return_value=expected_stream_url) as mock_sync:
-        # Act
-        result = await resolver.resolve_url(youtube_url=youtube_url, format_id=format_id)
+        with patch.object(resolver, "_extract_ttl_from_url", return_value=3600):
+            # Act
+            result_url, result_ttl = await resolver.resolve_url(
+                youtube_url=youtube_url, format_id=format_id
+            )
 
     # Assert
-    assert result == expected_stream_url
+    assert result_url == expected_stream_url
+    assert result_ttl == 3600
     mock_sync.assert_called_once_with(youtube_url, format_id)
 
 
 async def test_youtube_resolver_resolve_url_without_format_id(resolver):
     """
     正常系: format_idが指定されない場合、YoutubeResolver.resolve_url()が
-    Noneを渡してストリームURLを返すことを確認
+    Noneを渡してストリームURLとTTLを返すことを確認
 
     Arrange: yt-dlpの_resolve_url_syncをモックしてストリームURLを返す
     Act: YoutubeResolver.resolve_url()をformat_id指定なしで呼び出す
-    Assert: ストリームURLが返され、_resolve_url_syncにNoneが渡されることを確認
+    Assert: ストリームURLとTTLが返され、_resolve_url_syncにNoneが渡されることを確認
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    expected_stream_url = "https://example.com/stream.m3u8"
+    expected_stream_url = "https://example.com/stream.m3u8?expire=1234567890"
 
     with patch.object(resolver, "_resolve_url_sync", return_value=expected_stream_url) as mock_sync:
-        # Act
-        result = await resolver.resolve_url(youtube_url=youtube_url)
+        with patch.object(resolver, "_extract_ttl_from_url", return_value=3600):
+            # Act
+            result_url, result_ttl = await resolver.resolve_url(youtube_url=youtube_url)
 
     # Assert
-    assert result == expected_stream_url
+    assert result_url == expected_stream_url
+    assert result_ttl == 3600
     mock_sync.assert_called_once_with(youtube_url, None)
 
 
@@ -331,3 +339,63 @@ def test_youtube_resolver_resolve_url_sync_with_audio_video_format(resolver):
     call_args = mock_ydl_class.call_args
     ydl_opts = call_args[0][0]
     assert ydl_opts["format"] == "18"
+
+
+def test_extract_ttl_from_url_returns_correct_ttl(resolver):
+    """
+    正常系: expireパラメータからTTL秒数を正しく計算することを確認
+
+    Arrange: 現在時刻から3600秒後のexpireを設定
+    Act: _extract_ttl_from_url()を呼び出す
+    Assert: TTLは約3600秒（誤差±5秒程度を許容）
+    """
+    from datetime import UTC, datetime
+
+    # Arrange
+    future_expire = int(datetime.now(UTC).timestamp()) + 3600
+    url = f"https://example.com/stream.mp4?expire={future_expire}"
+
+    # Act
+    result = resolver._extract_ttl_from_url(url)
+
+    # Assert
+    assert 3595 <= result <= 3605
+
+
+def test_extract_ttl_from_url_raises_value_error_for_missing_expire(resolver):
+    """
+    異常系: expireパラメータが存在しない場合にValueErrorが発生することを確認
+
+    Arrange: expireパラメータなしのURLを準備
+    Act: _extract_ttl_from_url()を呼び出す
+    Assert: ValueErrorが発生し、適切なエラーメッセージが含まれることを確認
+    """
+    # Arrange
+    url = "https://example.com/stream.mp4?other=param"
+
+    # Act & Assert
+    with pytest.raises(ValueError) as exc_info:
+        resolver._extract_ttl_from_url(url)
+
+    assert "expire parameter not found" in str(exc_info.value)
+
+
+def test_extract_ttl_from_url_returns_zero_for_past_expire(resolver):
+    """
+    境界値: expireが過去の時刻の場合に0が返されることを確認
+
+    Arrange: 現在時刻から3600秒前（過去）のexpireを設定
+    Act: _extract_ttl_from_url()を呼び出す
+    Assert: TTLが0であることを確認
+    """
+    from datetime import UTC, datetime
+
+    # Arrange
+    past_expire = int(datetime.now(UTC).timestamp()) - 3600
+    url = f"https://example.com/stream.mp4?expire={past_expire}"
+
+    # Act
+    result = resolver._extract_ttl_from_url(url)
+
+    # Assert
+    assert result == 0
