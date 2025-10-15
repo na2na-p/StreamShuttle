@@ -91,6 +91,15 @@ class YoutubeResolver(YoutubeResolverInterface):
         video onlyフォーマットが指定された場合は動画のみ、audio+videoフォーマットが
         指定された場合は音声付きのURLを返します。
 
+        format_idが指定されていない場合は、VRChatのUnity Video Player互換性のため、
+        以下の優先順位でフォーマットを選択します：
+        1. プログレッシブHTTPダウンロード（HLS m3u8を除外）のMP4形式
+        2. 上記が利用できない場合、MP4形式全般
+        3. 最終的に最適なフォーマット（bestフォーマット）
+
+        この選択ロジックにより、Unity Video PlayerとAVPro Video Playerの
+        両方で再生可能なストリームURLを提供します。
+
         Args:
             youtube_url: YouTube動画URL
             format_id: フォーマットID（オプショナル）
@@ -102,7 +111,10 @@ class YoutubeResolver(YoutubeResolverInterface):
             yt_dlp.utils.DownloadError: URL解決に失敗した場合
             YouTubeResolverError: URLが取得できなかった場合
         """
-        format_spec = format_id if format_id else "best"
+        if format_id:
+            format_spec = format_id
+        else:
+            format_spec = "best[protocol^=http][protocol!*=m3u8][ext=mp4]/best[ext=mp4]/best"
 
         # yt-dlpオプション（Public利用を前提としたセキュリティ設定）
         ydl_opts = {

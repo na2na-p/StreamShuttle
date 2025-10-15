@@ -225,7 +225,7 @@ def test_youtube_resolver_resolve_url_sync_without_format_id(resolver):
     # yt-dlpのコンストラクタに渡されたオプションを確認
     call_args = mock_ydl_class.call_args
     ydl_opts = call_args[0][0]
-    assert ydl_opts["format"] == "best"
+    assert ydl_opts["format"] == "best[protocol^=http][protocol!*=m3u8][ext=mp4]/best[ext=mp4]/best"
 
 
 async def test_youtube_resolver_resolve_url_with_invalid_format_id_raises_error(resolver):
