@@ -8,6 +8,7 @@ JSON形式の構造化ログとテキスト形式のログを切り替え可能�
 import json
 import logging
 import sys
+import traceback
 from datetime import UTC, datetime
 from typing import Any
 
@@ -42,9 +43,31 @@ class JSONFormatter(logging.Formatter):
             "line": record.lineno,
         }
 
-        # 例外情報がある場合は追加
+        # 例外情報がある場合は構造化して追加
         if record.exc_info:
-            log_data["exception"] = self.formatException(record.exc_info)
+            exc_type, exc_value, exc_traceback = record.exc_info
+
+            # 例外情報を構造化
+            exception_info: dict[str, Any] = {
+                "type": exc_type.__name__ if exc_type else None,
+                "message": str(exc_value) if exc_value else None,
+                "traceback": [],
+            }
+
+            # スタックトレースを構造化（各フレームを辞書として格納）
+            if exc_traceback:
+                for frame in traceback.extract_tb(exc_traceback):
+                    exception_info["traceback"].append({
+                        "file": frame.filename,
+                        "line": frame.lineno,
+                        "function": frame.name,
+                        "code": frame.line,
+                    })
+
+            # テキスト形式も残す（後方互換性）
+            exception_info["traceback_text"] = self.formatException(record.exc_info)
+
+            log_data["exception"] = exception_info
 
         # 追加のコンテキスト情報がある場合は追加
         if hasattr(record, "extra"):
