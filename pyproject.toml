@@ -1,6 +1,6 @@
 [project]
 name = "streamshuttle"
-version = "0.1.0"
+version = "1.0.0"
 description = "YouTube URL resolver and proxy service for VRChat video players"
 readme = "README.md"
 requires-python = ">=3.11"
