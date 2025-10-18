@@ -133,7 +133,7 @@ class YoutubeResolver(YoutubeResolverInterface):
             "extract_flat": "in_playlist",
             "noplaylist": True,
             # HTTPヘッダー設定（User-Agentを明示）
-            "http_headers": {"User-Agent": "StreamShuttle/0.1.0"},
+            "http_headers": {"User-Agent": "StreamShuttle/1.0.0"},
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
