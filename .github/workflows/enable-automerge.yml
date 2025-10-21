@@ -1,0 +1,27 @@
+name: Enable auto merge
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+    branches:
+      - main
+
+jobs:
+  enable-auto-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Generate github token
+        id: generate_token
+        uses: actions/create-github-app-token@v2.1.4
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+      - name: Enable auto merge
+        run: |
+          gh pr merge ${{ github.event.pull_request.html_url }} --auto --merge
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
