@@ -72,7 +72,7 @@ jobs:
         with:
           context: .
           push: false
-          platforms: linux/arm64,linux/amd64
+          platforms: linux/amd64
           tags: streamshuttle:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
