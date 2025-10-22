@@ -1,6 +1,27 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
-  ]
+    "config:recommended",
+    "group:allNonMajor",
+    ":timezone(Asia/Tokyo)",
+    ":prHourlyLimitNone"
+  ],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["major update"]
+    },
+    {
+      "groupName": "production dependencies",
+      "matchDepTypes": ["dependencies"],
+      "matchManagers": ["pep621"]
+    },
+    {
+      "groupName": "dev dependencies",
+      "matchDepTypes": ["dev"],
+      "matchManagers": ["pep621"]
+    }
+  ],
+  "rangeStrategy": "bump",
+  "labels": ["renovate"]
 }
