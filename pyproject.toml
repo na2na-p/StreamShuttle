@@ -5,7 +5,7 @@ description = "YouTube URL resolver and proxy service for VRChat video players"
 readme = "README.md"
 requires-python = ">=3.14.0"
 dependencies = [
-    "fastapi>=0.119.1,<0.120.0",
+    "fastapi>=0.120.0,<0.120.1",
     "yt-dlp>=2025.10.22,<2026.0.0",
     "redis>=7.0.0,<7.1.0",
     "uvicorn[standard]>=0.38.0,<0.39.0",
@@ -22,7 +22,7 @@ dev = [
     "pytest-asyncio>=1.2.0,<2.0.0",
     "pytest-cov>=7.0.0,<8.0.0",
     "pytest-mock>=3.15.1,<4.0.0",
-    "ruff>=0.14.1,<0.15.0",
+    "ruff>=0.14.2,<0.15.0",
     "httpx>=0.28.1,<0.29.0",
     "fakeredis>=2.32.0,<3.0.0",
 ]
