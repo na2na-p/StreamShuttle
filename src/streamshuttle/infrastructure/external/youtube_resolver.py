@@ -134,6 +134,14 @@ class YoutubeResolver(YoutubeResolverInterface):
             "noplaylist": True,
             # HTTPヘッダー設定（User-Agentを明示）
             "http_headers": {"User-Agent": "StreamShuttle/1.0.0"},
+            # メモリリーク対策（yt-dlp Issue #8922）
+            # requestsハンドラーのメモリリークを回避するためlegacy handlerを使用
+            "compat_opts": ["prefer-legacy-http-handler"],
+            # メタデータ取得の最適化（メモリ効率改善）
+            "skip_download": True,  # ダウンロードは常にスキップ
+            "no_get_comments": True,  # コメント取得を無効化（不要なメタデータ削減）
+            "writesubtitles": False,  # 字幕を取得しない
+            "writethumbnail": False,  # サムネイルを取得しない
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
