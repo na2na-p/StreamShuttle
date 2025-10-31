@@ -5,6 +5,8 @@ YouTube URL解決とプロキシサービスのメインエントリーポイン
 VRChat動画プレイヤー向けのストリームURL解決サービスを提供します。
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -13,6 +15,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from streamshuttle.di.container import get_redis_dao
 from streamshuttle.handler.download_handler import router as download_router
 from streamshuttle.handler.resolve_handler import router as resolve_router
 from streamshuttle.shared.config import config
@@ -23,10 +26,37 @@ from streamshuttle.shared.security_headers import SecurityHeadersMiddleware
 # ログ設定を初期化（FastAPIアプリケーション作成の前に実行）
 setup_logging()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    アプリケーションのライフサイクル管理
+
+    アプリケーション起動時と終了時に実行される処理を定義します。
+    主にRedis接続などのリソースの適切なクリーンアップを行います。
+
+    Args:
+        app: FastAPIアプリケーションインスタンス
+
+    Yields:
+        None: アプリケーション実行中
+
+    Note:
+        メモリリーク対策として、Redis接続を適切にクローズします。
+        これにより、アプリケーション終了時のリソースリークを防ぎます。
+    """
+    # Startup: 起動時の処理（現在は特になし）
+    yield
+    # Shutdown: 終了時の処理
+    redis_dao = get_redis_dao()
+    await redis_dao.close()
+
+
 app = FastAPI(
     title="StreamShuttle",
     description="YouTube URL resolver and proxy service for VRChat video players",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # レート制限設定
