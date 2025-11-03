@@ -13,6 +13,7 @@ from fastapi.responses import RedirectResponse
 from streamshuttle.di.container import get_resolve_youtube_url_use_case
 from streamshuttle.shared.config import config
 from streamshuttle.shared.exceptions import (
+    HlsNotSupportedError,
     InvalidUrlError,
     InvalidVideoIdError,
     YouTubeResolverError,
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 async def resolve_url(
     request: Request,
     url: str = Query(..., description="YouTube動画URL"),
+    use_hls: bool = Query(False, description="HLS形式の使用（デフォルト: false）"),
     use_case: ResolveYoutubeUrlUseCase = Depends(get_resolve_youtube_url_use_case),
 ) -> RedirectResponse:
     """
@@ -47,6 +49,9 @@ async def resolve_url(
     Args:
         request: FastAPI Request（レート制限用）
         url: YouTube動画URL（必須クエリパラメータ）
+        use_hls: HLS形式を使用するか（デフォルト: false）
+            - true: HLS形式を使用
+            - false: プログレッシブダウンロードのみ使用
         use_case: ResolveYoutubeUrlUseCase（DIコンテナから注入）
 
     Returns:
@@ -54,7 +59,7 @@ async def resolve_url(
 
     Raises:
         HTTPException: 以下の場合にHTTPエラーを返します
-            - 400 Bad Request: ビデオIDまたはURLが無効な形式、または長さ制限を超過
+            - 400 Bad Request: ビデオIDまたはURLが無効な形式、または長さ制限を超過、HLS形式拒否
             - 429 Too Many Requests: レート制限を超過
             - 502 Bad Gateway: YouTube APIへのアクセス失敗、URL解決失敗
             - 500 Internal Server Error: その他の予期しないエラー
@@ -67,7 +72,7 @@ async def resolve_url(
             )
             raise InvalidUrlError(f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）")
 
-        resolved_url = await use_case.execute(url)
+        resolved_url = await use_case.execute(url, use_hls=use_hls)
         return RedirectResponse(url=resolved_url, status_code=307)
     except InvalidVideoIdError:
         # ログに詳細を記録
@@ -79,6 +84,14 @@ async def resolve_url(
         logger.warning(f"Invalid URL: url={url}", exc_info=True)
         # クライアントには簡潔なメッセージ
         raise HTTPException(status_code=400, detail="Invalid URL format.")
+    except HlsNotSupportedError:
+        # ログに詳細を記録
+        logger.warning(f"HLS format rejected: url={url}, use_hls=False")
+        # クライアントには具体的なメッセージ
+        raise HTTPException(
+            status_code=400,
+            detail="This video requires HLS support. Set use_hls=true or use a compatible player.",
+        )
     except YouTubeResolverError:
         # ログに詳細を記録（外部サービスエラーの詳細は内部のみ）
         logger.error(f"Failed to resolve URL: url={url}", exc_info=True)

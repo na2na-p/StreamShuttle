@@ -90,7 +90,7 @@ class TestResolveYoutubeUrlUseCase:
         # Assert
         assert result == resolved_url
         mock_query_service.find_by_video_id.assert_called_once_with(video_id)
-        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, None)
+        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, None, False)
         mock_repository.save.assert_called_once()
 
         # Repositoryに保存されたStreamUrlを検証
@@ -123,7 +123,7 @@ class TestResolveYoutubeUrlUseCase:
         # Assert
         assert result == new_resolved_url
         mock_query_service.find_by_video_id.assert_called_once_with(video_id)
-        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, None)
+        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, None, False)
         mock_repository.save.assert_called_once()
 
     async def test_extract_video_id_standard_format(
@@ -255,5 +255,5 @@ class TestResolveYoutubeUrlUseCase:
 
         # Assert
         assert result == resolved_url
-        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, format_id)
+        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, format_id, False)
         mock_repository.save.assert_called_once()

@@ -95,3 +95,20 @@ class InvalidUrlError(StreamShuttleError):
             message: エラーメッセージ（デフォルト: "URLが無効です"）
         """
         super().__init__(message)
+
+
+class HlsNotSupportedError(StreamShuttleError):
+    """
+    HLS形式が要求されたが、use_hls=falseで拒否された場合
+
+    ニコニコ動画はHLS専用形式のため、use_hls=falseの場合に発生します。
+    """
+
+    def __init__(self, message: str = "HLS形式がサポートされていません") -> None:
+        """
+        HLS非サポートエラーを初期化します
+
+        Args:
+            message: エラーメッセージ（デフォルト: "HLS形式がサポートされていません"）
+        """
+        super().__init__(message)

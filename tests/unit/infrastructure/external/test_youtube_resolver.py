@@ -152,7 +152,7 @@ async def test_youtube_resolver_resolve_url_with_format_id(resolver):
     # Assert
     assert result_url == expected_stream_url
     assert result_ttl == 3600
-    mock_sync.assert_called_once_with(youtube_url, format_id)
+    mock_sync.assert_called_once_with(youtube_url, format_id, False)
 
 
 async def test_youtube_resolver_resolve_url_without_format_id(resolver):
@@ -176,7 +176,7 @@ async def test_youtube_resolver_resolve_url_without_format_id(resolver):
     # Assert
     assert result_url == expected_stream_url
     assert result_ttl == 3600
-    mock_sync.assert_called_once_with(youtube_url, None)
+    mock_sync.assert_called_once_with(youtube_url, None, False)
 
 
 def test_youtube_resolver_resolve_url_sync_with_format_id(resolver):
