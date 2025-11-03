@@ -21,15 +21,19 @@ class StreamUrlRepository(ABC):
     """
 
     @abstractmethod
-    async def save(self, stream_url: StreamUrl) -> None:
+    async def save(self, stream_url: StreamUrl, use_hls: bool = False) -> None:
         """
         StreamUrlを保存します
 
         StreamUrl Aggregateをデータストア（Redis等）に永続化します。
         既に同じVideoIdのStreamUrlが存在する場合は上書きします。
 
+        use_hlsパラメータはキャッシュキーの一部として使用され、
+        同じvideo_idでもuse_hlsの値が異なれば別のエントリとして保存されます。
+
         Args:
             stream_url: 保存するStreamUrl Aggregate
+            use_hls: HLS形式の使用フラグ（デフォルト: False）
 
         Raises:
             CacheException: データストアへの保存に失敗した場合

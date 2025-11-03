@@ -59,7 +59,8 @@ async def test_stream_url_repository_save_calls_redis_dao_set(repository, mock_r
     # Assert
     mock_redis_dao.set.assert_called_once()
     call_args = mock_redis_dao.set.call_args
-    assert call_args.kwargs["key"] == "dQw4w9WgXcQ"
+    # use_hls=Falseがデフォルトなので、キャッシュキーに含まれる
+    assert call_args.kwargs["key"] == "dQw4w9WgXcQ:hls:False"
     assert call_args.kwargs["value"] == "https://example.com/video.m3u8"
     assert call_args.kwargs["ttl"] > 0
 

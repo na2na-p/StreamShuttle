@@ -52,6 +52,7 @@ async def test_stream_url_query_service_find_by_video_id_returns_dto(query_servi
     # Arrange
     video_id = "dQw4w9WgXcQ"
     cached_url = "https://example.com/video.m3u8"
+    cache_key = f"{video_id}:hls:False"
     mock_redis_dao.get.return_value = cached_url
     mock_redis_dao.ttl.return_value = 3600
 
@@ -63,8 +64,8 @@ async def test_stream_url_query_service_find_by_video_id_returns_dto(query_servi
     assert result.video_id == video_id
     assert result.resolved_url == cached_url
     assert result.expiry_at is not None
-    mock_redis_dao.get.assert_called_once_with(key=video_id)
-    mock_redis_dao.ttl.assert_called_once_with(key=video_id)
+    mock_redis_dao.get.assert_called_once_with(key=cache_key)
+    mock_redis_dao.ttl.assert_called_once_with(key=cache_key)
 
 
 async def test_stream_url_query_service_find_by_video_id_returns_none_for_cache_miss(
@@ -80,6 +81,7 @@ async def test_stream_url_query_service_find_by_video_id_returns_none_for_cache_
     """
     # Arrange
     video_id = "dQw4w9WgXcQ"
+    cache_key = f"{video_id}:hls:False"
     mock_redis_dao.get.return_value = None
 
     # Act
@@ -87,7 +89,7 @@ async def test_stream_url_query_service_find_by_video_id_returns_none_for_cache_
 
     # Assert
     assert result is None
-    mock_redis_dao.get.assert_called_once_with(key=video_id)
+    mock_redis_dao.get.assert_called_once_with(key=cache_key)
 
 
 async def test_stream_url_query_service_find_by_video_id_raises_cache_exception_on_redis_error(
@@ -123,6 +125,7 @@ async def test_stream_url_query_service_find_by_video_id_uses_accurate_ttl_from_
     """
     # Arrange
     video_id = "dQw4w9WgXcQ"
+    cache_key = f"{video_id}:hls:False"
     cached_url = "https://example.com/video.m3u8"
     ttl_seconds = 1800
     mock_redis_dao.get.return_value = cached_url
@@ -133,7 +136,7 @@ async def test_stream_url_query_service_find_by_video_id_uses_accurate_ttl_from_
 
     # Assert
     assert result is not None
-    mock_redis_dao.ttl.assert_called_once_with(key=video_id)
+    mock_redis_dao.ttl.assert_called_once_with(key=cache_key)
 
 
 async def test_stream_url_query_service_find_by_video_id_falls_back_to_default_ttl_when_ttl_is_none(
@@ -148,6 +151,7 @@ async def test_stream_url_query_service_find_by_video_id_falls_back_to_default_t
     """
     # Arrange
     video_id = "dQw4w9WgXcQ"
+    cache_key = f"{video_id}:hls:False"
     cached_url = "https://example.com/video.m3u8"
     mock_redis_dao.get.return_value = cached_url
     mock_redis_dao.ttl.return_value = None
@@ -160,7 +164,7 @@ async def test_stream_url_query_service_find_by_video_id_falls_back_to_default_t
     assert result.video_id == video_id
     assert result.resolved_url == cached_url
     assert result.expiry_at is not None
-    mock_redis_dao.ttl.assert_called_once_with(key=video_id)
+    mock_redis_dao.ttl.assert_called_once_with(key=cache_key)
 
 
 async def test_stream_url_query_service_fallback_to_default_ttl_when_ttl_is_negative_one(
@@ -175,6 +179,7 @@ async def test_stream_url_query_service_fallback_to_default_ttl_when_ttl_is_nega
     """
     # Arrange
     video_id = "dQw4w9WgXcQ"
+    cache_key = f"{video_id}:hls:False"
     cached_url = "https://example.com/video.m3u8"
     mock_redis_dao.get.return_value = cached_url
     mock_redis_dao.ttl.return_value = -1
@@ -187,7 +192,7 @@ async def test_stream_url_query_service_fallback_to_default_ttl_when_ttl_is_nega
     assert result.video_id == video_id
     assert result.resolved_url == cached_url
     assert result.expiry_at is not None
-    mock_redis_dao.ttl.assert_called_once_with(key=video_id)
+    mock_redis_dao.ttl.assert_called_once_with(key=cache_key)
 
 
 async def test_stream_url_query_service_fallback_to_default_ttl_when_ttl_is_negative_two(
@@ -206,6 +211,7 @@ async def test_stream_url_query_service_fallback_to_default_ttl_when_ttl_is_nega
     """
     # Arrange
     video_id = "dQw4w9WgXcQ"
+    cache_key = f"{video_id}:hls:False"
     cached_url = "https://example.com/video.m3u8"
     mock_redis_dao.get.return_value = cached_url
     mock_redis_dao.ttl.return_value = -2
@@ -218,4 +224,4 @@ async def test_stream_url_query_service_fallback_to_default_ttl_when_ttl_is_nega
     assert result.video_id == video_id
     assert result.resolved_url == cached_url
     assert result.expiry_at is not None
-    mock_redis_dao.ttl.assert_called_once_with(key=video_id)
+    mock_redis_dao.ttl.assert_called_once_with(key=cache_key)

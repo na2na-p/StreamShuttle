@@ -70,7 +70,7 @@ class ResolveYoutubeUrlUseCase:
         """
         video_id = self._extract_video_id(youtube_url)
 
-        cached = await self._query_service.find_by_video_id(video_id)
+        cached = await self._query_service.find_by_video_id(video_id, use_hls)
 
         if cached and cached.expiry_at > datetime.now(UTC):
             return cached.resolved_url
@@ -82,7 +82,7 @@ class ResolveYoutubeUrlUseCase:
         stream_url = StreamUrl.create(
             video_id=video_id, resolved_url=resolved_url, ttl_seconds=ttl_seconds
         )
-        await self._repository.save(stream_url)
+        await self._repository.save(stream_url, use_hls)
 
         return resolved_url
 

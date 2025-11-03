@@ -64,7 +64,7 @@ class TestResolveYoutubeUrlUseCase:
 
         # Assert
         assert result == cached_url
-        mock_query_service.find_by_video_id.assert_called_once_with(video_id)
+        mock_query_service.find_by_video_id.assert_called_once_with(video_id, False)
         mock_youtube_resolver.resolve_url.assert_not_called()
         mock_repository.save.assert_not_called()
 
@@ -89,7 +89,7 @@ class TestResolveYoutubeUrlUseCase:
 
         # Assert
         assert result == resolved_url
-        mock_query_service.find_by_video_id.assert_called_once_with(video_id)
+        mock_query_service.find_by_video_id.assert_called_once_with(video_id, False)
         mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, None, False)
         mock_repository.save.assert_called_once()
 
@@ -97,6 +97,8 @@ class TestResolveYoutubeUrlUseCase:
         saved_stream_url = mock_repository.save.call_args[0][0]
         assert saved_stream_url.video_id.value == video_id
         assert saved_stream_url.resolved_url.value == resolved_url
+        # use_hlsパラメータも検証
+        assert mock_repository.save.call_args[0][1] is False
 
     async def test_execute_cache_expired(
         self,
@@ -122,7 +124,7 @@ class TestResolveYoutubeUrlUseCase:
 
         # Assert
         assert result == new_resolved_url
-        mock_query_service.find_by_video_id.assert_called_once_with(video_id)
+        mock_query_service.find_by_video_id.assert_called_once_with(video_id, False)
         mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url, None, False)
         mock_repository.save.assert_called_once()
 
