@@ -70,7 +70,9 @@ class YoutubeResolver(YoutubeResolverInterface):
             if parsed_url.hostname not in allowed_domains:
                 raise InvalidUrlError(f"YouTube URLのみサポートしています: {youtube_url}")
 
-            resolved_url = await asyncio.to_thread(self._resolve_url_sync, youtube_url, format_id, use_hls)
+            resolved_url = await asyncio.to_thread(
+                self._resolve_url_sync, youtube_url, format_id, use_hls
+            )
 
             try:
                 ttl_seconds = self._extract_ttl_from_url(resolved_url)

@@ -14,10 +14,10 @@ from fastapi.testclient import TestClient
 from streamshuttle.di.container import get_resolve_youtube_url_use_case
 from streamshuttle.handler.resolve_handler import router
 from streamshuttle.shared.exceptions import (
+    HlsNotSupportedError,
     InvalidUrlError,
     InvalidVideoIdError,
     YouTubeResolverError,
-    HlsNotSupportedError,
 )
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import ResolveYoutubeUrlUseCase
 
