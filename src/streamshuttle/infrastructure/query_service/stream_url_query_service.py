@@ -41,17 +41,19 @@ class StreamUrlQueryService(StreamUrlQueryServiceInterface):
         """
         self._redis_dao = redis_dao
 
-    async def find_by_video_id(self, video_id: str) -> StreamUrlDto | None:
+    async def find_by_video_id(self, video_id: str, use_hls: bool = False) -> StreamUrlDto | None:
         """
         YouTube動画IDでストリームURL情報を取得します
 
         Redisキャッシュから指定された動画IDに対応するストリームURL情報を取得します。
         キャッシュに存在しない場合はNoneを返します。
 
-        Redisキーは動画ID（video_id）、値は解決済みURL（resolved_url）です。
+        Redisキーは「video_id:hls:use_hls」形式で、use_hlsの値によって
+        異なるキャッシュエントリを参照します。
 
         Args:
             video_id: YouTube動画ID（11桁の英数字）
+            use_hls: HLS形式の使用フラグ（デフォルト: False）
 
         Returns:
             StreamUrlDto | None:
@@ -60,15 +62,18 @@ class StreamUrlQueryService(StreamUrlQueryServiceInterface):
         Raises:
             CacheException: キャッシュ操作に失敗した場合
         """
+        # use_hlsを含むキャッシュキーを生成
+        cache_key = f"{video_id}:hls:{use_hls}"
+
         # Redisからキャッシュを取得
-        cached_url = await self._redis_dao.get(key=video_id)
+        cached_url = await self._redis_dao.get(key=cache_key)
 
         # キャッシュが存在しない場合はNoneを返す
         if cached_url is None:
             return None
 
         # Redisから正確なTTLを取得
-        ttl = await self._redis_dao.ttl(key=video_id)
+        ttl = await self._redis_dao.ttl(key=cache_key)
         if ttl is None or ttl < 0:
             # キーが存在しないまたはTTLが設定されていない場合はフォールバック
             ttl = config.CACHE_TTL_SECONDS

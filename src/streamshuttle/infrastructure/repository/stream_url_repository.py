@@ -34,23 +34,25 @@ class StreamUrlRepository(StreamUrlRepositoryInterface):
         """
         self._redis_dao = redis_dao
 
-    async def save(self, stream_url: StreamUrl) -> None:
+    async def save(self, stream_url: StreamUrl, use_hls: bool = False) -> None:
         """
         StreamUrlを保存します
 
         StreamUrl AggregateをRedisに永続化します。
         既に同じVideoIdのStreamUrlが存在する場合は上書きします。
 
-        Redisキーはビデオid.value、値はresolved_url.value、
-        TTLはcache_expiry.ttl_seconds()を使用します。
+        Redisキーは「video_id:hls:use_hls」形式で、use_hlsの値によって
+        異なるキャッシュエントリとして保存されます。
 
         Args:
             stream_url: 保存するStreamUrl Aggregate
+            use_hls: HLS形式の使用フラグ（デフォルト: False）
 
         Raises:
             CacheException: Redisへの保存に失敗した場合
         """
-        key = stream_url.video_id.value
+        # use_hlsを含むキャッシュキーを生成
+        key = f"{stream_url.video_id.value}:hls:{use_hls}"
         value = stream_url.resolved_url.value
         ttl = stream_url.cache_expiry.ttl_seconds()
 
