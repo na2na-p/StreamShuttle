@@ -21,9 +21,7 @@ class StreamUrlQueryService(ABC):
     """
 
     @abstractmethod
-    async def find_by_video_id(
-        self, video_id: str, use_hls: bool = False
-    ) -> StreamUrlDto | None:
+    async def find_by_video_id(self, video_id: str, use_hls: bool = False) -> StreamUrlDto | None:
         """
         YouTube動画IDでストリームURL情報を取得します
 
