@@ -31,7 +31,9 @@ class YoutubeResolver(YoutubeResolverInterface):
         - quiet=Trueでログ出力を抑制
     """
 
-    async def resolve_url(self, youtube_url: str, format_id: str | None = None) -> tuple[str, int]:
+    async def resolve_url(
+        self, youtube_url: str, format_id: str | None = None, use_hls: bool = False
+    ) -> tuple[str, int]:
         """
         YouTube動画URLを直接ストリームURLに解決します
 
@@ -42,6 +44,9 @@ class YoutubeResolver(YoutubeResolverInterface):
         Args:
             youtube_url: YouTube動画URL（https://www.youtube.com/watch?v=xxxxx形式）
             format_id: フォーマットID（オプショナル）
+            use_hls: HLS形式の使用（デフォルト: False）
+                注意: YouTubeはプログレッシブMP4を優先するため、
+                このパラメーターは既存動作に影響を与えません（後方互換性を維持）
 
         Returns:
             tuple[str, int]: (解決済みの直接ストリームURL, TTL秒数)
@@ -65,7 +70,7 @@ class YoutubeResolver(YoutubeResolverInterface):
             if parsed_url.hostname not in allowed_domains:
                 raise InvalidUrlError(f"YouTube URLのみサポートしています: {youtube_url}")
 
-            resolved_url = await asyncio.to_thread(self._resolve_url_sync, youtube_url, format_id)
+            resolved_url = await asyncio.to_thread(self._resolve_url_sync, youtube_url, format_id, use_hls)
 
             try:
                 ttl_seconds = self._extract_ttl_from_url(resolved_url)
@@ -83,7 +88,9 @@ class YoutubeResolver(YoutubeResolverInterface):
 
         return resolved_url, ttl_seconds
 
-    def _resolve_url_sync(self, youtube_url: str, format_id: str | None = None) -> str:
+    def _resolve_url_sync(
+        self, youtube_url: str, format_id: str | None = None, use_hls: bool = False
+    ) -> str:
         """
         yt-dlpを使用してYouTube URLを解決します（同期処理）
 
@@ -94,18 +101,21 @@ class YoutubeResolver(YoutubeResolverInterface):
         video onlyフォーマットが指定された場合は動画のみ、audio+videoフォーマットが
         指定された場合は音声付きのURLを返します。
 
-        format_idが指定されていない場合は、VRChatのUnity Video Player互換性のため、
-        以下の優先順位でフォーマットを選択します：
+        format_idが指定されていない場合は、use_hlsパラメーターに応じて
+        フォーマットを選択します：
+
+        use_hls=False（デフォルト）の場合：
         1. プログレッシブHTTPダウンロード（HLS m3u8を除外）のMP4形式
         2. 上記が利用できない場合、MP4形式全般
         3. 最終的に最適なフォーマット（bestフォーマット）
 
-        この選択ロジックにより、Unity Video PlayerとAVPro Video Playerの
-        両方で再生可能なストリームURLを提供します。
+        use_hls=Trueの場合：
+        - HLS形式を許可（bestフォーマット）
 
         Args:
             youtube_url: YouTube動画URL
             format_id: フォーマットID（オプショナル）
+            use_hls: HLS形式の使用（デフォルト: False）
 
         Returns:
             str: 解決済みの直接ストリームURL
@@ -117,7 +127,12 @@ class YoutubeResolver(YoutubeResolverInterface):
         if format_id:
             format_spec = format_id
         else:
-            format_spec = "best[protocol^=http][protocol!*=m3u8][ext=mp4]/best[ext=mp4]/best"
+            if use_hls:
+                # HLS形式を許可（bestフォーマット）
+                format_spec = "best"
+            else:
+                # プログレッシブMP4を優先（HLS除外）
+                format_spec = "best[protocol^=http][protocol!*=m3u8][ext=mp4]/best[ext=mp4]/best"
 
         # yt-dlpオプション（Public利用を前提としたセキュリティ設定）
         ydl_opts = {

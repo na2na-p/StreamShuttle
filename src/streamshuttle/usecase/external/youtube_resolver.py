@@ -19,7 +19,9 @@ class YoutubeResolver(ABC):
     """
 
     @abstractmethod
-    async def resolve_url(self, youtube_url: str, format_id: str | None = None) -> tuple[str, int]:
+    async def resolve_url(
+        self, youtube_url: str, format_id: str | None = None, use_hls: bool = False
+    ) -> tuple[str, int]:
         """
         YouTube動画URLを直接ストリームURLに解決します
 
@@ -30,6 +32,7 @@ class YoutubeResolver(ABC):
         Args:
             youtube_url: YouTube動画URL（https://www.youtube.com/watch?v=xxxxx形式）
             format_id: フォーマットID（オプショナル）
+            use_hls: HLS形式の使用（デフォルト: False）
 
         Returns:
             tuple[str, int]: (解決済みの直接ストリームURL, TTL秒数)

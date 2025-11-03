@@ -17,6 +17,7 @@ from streamshuttle.shared.exceptions import (
     InvalidUrlError,
     InvalidVideoIdError,
     YouTubeResolverError,
+    HlsNotSupportedError,
 )
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import ResolveYoutubeUrlUseCase
 
@@ -82,7 +83,7 @@ def test_resolve_url_success(client, mock_use_case):
     # Assert
     assert response.status_code == 307
     assert response.headers["location"] == resolved_url
-    mock_use_case.execute.assert_called_once_with(youtube_url)
+    mock_use_case.execute.assert_called_once_with(youtube_url, use_hls=False)
 
 
 def test_resolve_url_with_invalid_video_id(client, mock_use_case):
@@ -183,7 +184,7 @@ def test_resolve_url_calls_use_case_with_correct_params(client, mock_use_case):
     client.get(f"/resolve?url={youtube_url}")
 
     # Assert
-    mock_use_case.execute.assert_called_once_with(youtube_url)
+    mock_use_case.execute.assert_called_once_with(youtube_url, use_hls=False)
 
 
 def test_resolve_url_missing_url_parameter(client):
@@ -198,3 +199,66 @@ def test_resolve_url_missing_url_parameter(client):
 
     # Assert
     assert response.status_code == 422
+
+
+def test_resolve_url_with_use_hls_true(client, mock_use_case):
+    """
+    正常系: use_hls=trueの場合、UseCaseにuse_hls=Trueが渡されることを検証します
+
+    use_hlsパラメーターがtrueの場合、
+    UseCaseのexecuteメソッドにuse_hls=Trueが渡されることを確認します。
+    """
+    # Arrange
+    youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    resolved_url = "https://rr1---sn-example.googlevideo.com/videoplayback?..."
+    mock_use_case.execute.return_value = resolved_url
+
+    # Act
+    response = client.get(f"/resolve?url={youtube_url}&use_hls=true", follow_redirects=False)
+
+    # Assert
+    assert response.status_code == 307
+    assert response.headers["location"] == resolved_url
+    mock_use_case.execute.assert_called_once_with(youtube_url, use_hls=True)
+
+
+def test_resolve_url_with_use_hls_false(client, mock_use_case):
+    """
+    正常系: use_hls=falseの場合、UseCaseにuse_hls=Falseが渡されることを検証します
+
+    use_hlsパラメーターがfalseの場合（またはデフォルト）、
+    UseCaseのexecuteメソッドにuse_hls=Falseが渡されることを確認します。
+    """
+    # Arrange
+    youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    resolved_url = "https://rr1---sn-example.googlevideo.com/videoplayback?..."
+    mock_use_case.execute.return_value = resolved_url
+
+    # Act
+    response = client.get(f"/resolve?url={youtube_url}&use_hls=false", follow_redirects=False)
+
+    # Assert
+    assert response.status_code == 307
+    assert response.headers["location"] == resolved_url
+    mock_use_case.execute.assert_called_once_with(youtube_url, use_hls=False)
+
+
+def test_resolve_url_with_hls_not_supported_error(client, mock_use_case):
+    """
+    異常系: HLS形式が拒否された場合、400 Bad Requestが返されることを検証します
+
+    UseCaseがHlsNotSupportedErrorを投げる場合、
+    エンドポイントは400 Bad Requestを返し、
+    エラーメッセージが含まれることを確認します。
+    """
+    # Arrange
+    youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    mock_use_case.execute.side_effect = HlsNotSupportedError("HLS形式がサポートされていません")
+
+    # Act
+    response = client.get(f"/resolve?url={youtube_url}&use_hls=false")
+
+    # Assert
+    assert response.status_code == 400
+    assert "HLS support" in response.json()["detail"]
+    assert "use_hls=true" in response.json()["detail"]

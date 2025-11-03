@@ -47,13 +47,16 @@ class ResolveYoutubeUrlUseCase:
         self._query_service = query_service
         self._youtube_resolver = youtube_resolver
 
-    async def execute(self, youtube_url: str, format_id: str | None = None) -> str:
+    async def execute(
+        self, youtube_url: str, format_id: str | None = None, use_hls: bool = False
+    ) -> str:
         """
         YouTube URLをストリームURLに解決します
 
         Args:
             youtube_url: YouTube動画URL
             format_id: フォーマットID（オプショナル）
+            use_hls: HLS形式の使用（デフォルト: False）
 
         Returns:
             str: 解決済みの直接ストリームURL
@@ -63,6 +66,7 @@ class ResolveYoutubeUrlUseCase:
             InvalidUrlException: 無効なURLが指定された場合
             YouTubeResolverException: YouTube APIへのアクセスに失敗した場合
             CacheException: キャッシュ操作に失敗した場合
+            HlsNotSupportedError: HLS形式が拒否された場合
         """
         video_id = self._extract_video_id(youtube_url)
 
@@ -71,7 +75,9 @@ class ResolveYoutubeUrlUseCase:
         if cached and cached.expiry_at > datetime.now(UTC):
             return cached.resolved_url
 
-        resolved_url, ttl_seconds = await self._youtube_resolver.resolve_url(youtube_url, format_id)
+        resolved_url, ttl_seconds = await self._youtube_resolver.resolve_url(
+            youtube_url, format_id, use_hls
+        )
 
         stream_url = StreamUrl.create(
             video_id=video_id, resolved_url=resolved_url, ttl_seconds=ttl_seconds
