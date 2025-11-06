@@ -5,7 +5,7 @@ description = "YouTube URL resolver and proxy service for VRChat video players"
 readme = "README.md"
 requires-python = ">=3.14.0"
 dependencies = [
-    "fastapi>=0.120.2,<0.120.3",
+    "fastapi>=0.120.3,<0.120.4",
     "yt-dlp>=2025.10.22,<2026.0.0",
     "redis>=7.0.1,<7.1.0",
     "uvicorn[standard]>=0.38.0,<0.39.0",
