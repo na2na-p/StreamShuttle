@@ -92,24 +92,32 @@ async def test_stream_url_query_service_find_by_video_id_returns_none_for_cache_
     mock_redis_dao.get.assert_called_once_with(key=cache_key)
 
 
-async def test_stream_url_query_service_find_by_video_id_raises_cache_exception_on_redis_error(
-    query_service, mock_redis_dao
+async def test_stream_url_query_service_find_by_video_id_fallback_on_redis_error(
+    query_service, mock_redis_dao, caplog
 ):
     """
     異常系: Redis操作エラー時にStreamUrlQueryService.find_by_video_id()が
-    CacheErrorを発生させることを確認
+    ログを出力してNoneを返すことを確認（キャッシュミスと同等扱い）
 
     Arrange: RedisDaoのget()をモックしてCacheErrorを発生させる
     Act: StreamUrlQueryService.find_by_video_id()を呼び出す
-    Assert: CacheErrorが発生することを確認
+    Assert: Noneが返され、警告ログが出力されることを確認
     """
+    import logging
+
     # Arrange
     video_id = "dQw4w9WgXcQ"
+    cache_key = f"{video_id}:hls:False"
     mock_redis_dao.get.side_effect = CacheError("Redis error")
 
-    # Act & Assert
-    with pytest.raises(CacheError):
-        await query_service.find_by_video_id(video_id=video_id)
+    # Act
+    with caplog.at_level(logging.WARNING):
+        result = await query_service.find_by_video_id(video_id=video_id)
+
+    # Assert
+    assert result is None
+    assert "Redis障害: キャッシュ取得スキップ" in caplog.text
+    assert cache_key in caplog.text
 
 
 async def test_stream_url_query_service_find_by_video_id_uses_accurate_ttl_from_redis(

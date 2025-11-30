@@ -65,26 +65,32 @@ async def test_stream_url_repository_save_calls_redis_dao_set(repository, mock_r
     assert call_args.kwargs["ttl"] > 0
 
 
-async def test_stream_url_repository_save_raises_cache_exception_on_redis_error(
-    repository, mock_redis_dao
+async def test_stream_url_repository_save_fallback_on_redis_error(
+    repository, mock_redis_dao, caplog
 ):
     """
-    異常系: Redis操作エラー時にStreamUrlRepository.save()がCacheErrorを
-    発生させることを確認
+    異常系: Redis操作エラー時にStreamUrlRepository.save()がログを出力して
+    処理を続行することを確認
 
     Arrange: RedisDaoのset()をモックしてCacheErrorを発生させる
     Act: StreamUrlRepository.save()を呼び出す
-    Assert: CacheErrorが発生することを確認
+    Assert: 例外が発生せず、警告ログが出力されることを確認
     """
+    import logging
+
     # Arrange
     stream_url = StreamUrl.create(
         video_id="dQw4w9WgXcQ", resolved_url="https://example.com/video.m3u8", ttl_seconds=3600
     )
     mock_redis_dao.set.side_effect = CacheError("Redis error")
 
-    # Act & Assert
-    with pytest.raises(CacheError):
+    # Act
+    with caplog.at_level(logging.WARNING):
         await repository.save(stream_url=stream_url)
+
+    # Assert
+    assert "Redis障害: キャッシュ保存スキップ" in caplog.text
+    assert "dQw4w9WgXcQ:hls:False" in caplog.text
 
 
 async def test_stream_url_repository_delete_calls_redis_dao_delete(repository, mock_redis_dao):
@@ -105,21 +111,27 @@ async def test_stream_url_repository_delete_calls_redis_dao_delete(repository, m
     mock_redis_dao.delete.assert_called_once_with(key="dQw4w9WgXcQ")
 
 
-async def test_stream_url_repository_delete_raises_cache_exception_on_redis_error(
-    repository, mock_redis_dao
+async def test_stream_url_repository_delete_fallback_on_redis_error(
+    repository, mock_redis_dao, caplog
 ):
     """
-    異常系: Redis操作エラー時にStreamUrlRepository.delete()がCacheErrorを
-    発生させることを確認
+    異常系: Redis操作エラー時にStreamUrlRepository.delete()がログを出力して
+    処理を続行することを確認
 
     Arrange: RedisDaoのdelete()をモックしてCacheErrorを発生させる
     Act: StreamUrlRepository.delete()を呼び出す
-    Assert: CacheErrorが発生することを確認
+    Assert: 例外が発生せず、警告ログが出力されることを確認
     """
+    import logging
+
     # Arrange
     video_id = VideoId(_value="dQw4w9WgXcQ")
     mock_redis_dao.delete.side_effect = CacheError("Redis error")
 
-    # Act & Assert
-    with pytest.raises(CacheError):
+    # Act
+    with caplog.at_level(logging.WARNING):
         await repository.delete(video_id=video_id)
+
+    # Assert
+    assert "Redis障害: キャッシュ削除スキップ" in caplog.text
+    assert "dQw4w9WgXcQ" in caplog.text

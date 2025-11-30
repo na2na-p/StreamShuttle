@@ -4,11 +4,16 @@ StreamUrlRepository 実装モジュール
 Domain層で定義されたStreamUrlRepositoryインターフェースの実装クラスを定義します。
 """
 
+import logging
+
 from streamshuttle.domain.model.stream_url import StreamUrl, VideoId
 from streamshuttle.domain.repository.stream_url_repository import (
     StreamUrlRepository as StreamUrlRepositoryInterface,
 )
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
+from streamshuttle.shared.exceptions import CacheError
+
+logger = logging.getLogger(__name__)
 
 
 class StreamUrlRepository(StreamUrlRepositoryInterface):
@@ -44,19 +49,22 @@ class StreamUrlRepository(StreamUrlRepositoryInterface):
         Redisキーは「video_id:hls:use_hls」形式で、use_hlsの値によって
         異なるキャッシュエントリとして保存されます。
 
+        Redis障害時はログを出力して処理を続行します（キャッシュ保存失敗は
+        本体処理の成功に影響しません）。
+
         Args:
             stream_url: 保存するStreamUrl Aggregate
             use_hls: HLS形式の使用フラグ（デフォルト: False）
-
-        Raises:
-            CacheException: Redisへの保存に失敗した場合
         """
         # use_hlsを含むキャッシュキーを生成
         key = f"{stream_url.video_id.value}:hls:{use_hls}"
         value = stream_url.resolved_url.value
         ttl = stream_url.cache_expiry.ttl_seconds()
 
-        await self._redis_dao.set(key=key, value=value, ttl=ttl)
+        try:
+            await self._redis_dao.set(key=key, value=value, ttl=ttl)
+        except CacheError as e:
+            logger.warning("Redis障害: キャッシュ保存スキップ key=%s, error=%s", key, e)
 
     async def delete(self, video_id: VideoId) -> None:
         """
@@ -65,11 +73,14 @@ class StreamUrlRepository(StreamUrlRepositoryInterface):
         指定されたVideoIdに対応するStreamUrlをRedisから削除します。
         該当するStreamUrlが存在しない場合でもエラーとしません。
 
+        Redis障害時はログを出力して処理を続行します（キャッシュ削除失敗は
+        本体処理の成功に影響しません）。
+
         Args:
             video_id: 削除対象のVideoId
-
-        Raises:
-            CacheException: Redisからの削除に失敗した場合
         """
         key = video_id.value
-        await self._redis_dao.delete(key=key)
+        try:
+            await self._redis_dao.delete(key=key)
+        except CacheError as e:
+            logger.warning("Redis障害: キャッシュ削除スキップ key=%s, error=%s", key, e)
