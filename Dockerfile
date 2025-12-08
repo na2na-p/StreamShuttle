@@ -12,11 +12,19 @@ ENV PYTHONUNBUFFERED=1 \
         PATH="/app/.venv/bin:$PATH" \
         PYTHONPATH="/app/src"
 
-# ビルドツールとffmpegのインストール（C拡張モジュール（uvloop等）のビルドとメディアマージに必要）
+# ビルドツール、ffmpeg、Denoのインストール
+# - build-essential: C拡張モジュール（uvloop等）のビルドに必要
+# - ffmpeg: メディアのマージやトランスコードに必要
+# - curl, unzip: Denoのインストールに必要
+# - Deno: yt-dlpのYouTube完全サポートに必要なJavaScriptランタイム
+#   (参照: https://github.com/yt-dlp/yt-dlp/issues/15012)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         ffmpeg \
-        && rm -rf /var/lib/apt/lists/*
+        curl \
+        unzip \
+        && rm -rf /var/lib/apt/lists/* \
+        && curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh
 
 # uvパッケージマネージャーのインストール（高速な依存関係解決）
 RUN pip install --no-cache-dir uv
