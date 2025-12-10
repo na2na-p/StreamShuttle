@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ベースイメージ: Python 3.14のスリム版（.tool-versionsの要件に準拠）
-FROM python:3.14.0-slim AS base
+FROM python:3.14.1-slim AS base
 
 # Python環境設定
 # - PYTHONUNBUFFERED: 標準出力のバッファリングを無効化（ログの即座出力）
