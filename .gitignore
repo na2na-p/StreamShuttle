@@ -309,3 +309,5 @@ cython_debug/
 
 .cursor
 .serena
+.mcp.json
+CLAUDE.md

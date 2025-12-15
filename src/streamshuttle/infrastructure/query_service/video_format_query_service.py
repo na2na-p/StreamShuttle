@@ -152,6 +152,9 @@ class VideoFormatQueryService(VideoFormatQueryServiceInterface):
             "noplaylist": True,  # プレイリストダウンロードを無効化（単一動画のみ処理）
             # HTTPヘッダー設定（User-Agentを明示）
             "http_headers": {"User-Agent": "StreamShuttle/0.1.0"},
+            # YouTube署名解決のためのリモートコンポーネント有効化
+            # Denoランタイムを使用してJavaScriptチャレンジを解決
+            "extractor_args": {"youtube": {"remote_components": ["ejs:github"]}},
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
