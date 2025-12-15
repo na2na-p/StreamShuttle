@@ -50,23 +50,25 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # 開発ステージ: 開発用依存関係を含むすべての依存関係をインストール
 FROM base AS development
 
-COPY pyproject.toml uv.lock* ./
+# セキュリティ向上: 非rootユーザーを先に作成
+RUN useradd -m -u 1000 appuser
+
+COPY --chown=appuser:appuser pyproject.toml uv.lock* ./
 
 # キャッシュマウントを使用して外部依存関係のみをインストール（プロジェクトパッケージは除外）
 RUN --mount=type=cache,target=/root/.cache/uv \
         uv sync --frozen --no-install-project
 
 # アプリケーションコードをコピー
-COPY . .
+COPY --chown=appuser:appuser . .
 
 # プロジェクトパッケージをeditable modeでインストール
 RUN --mount=type=cache,target=/root/.cache/uv \
         uv sync --frozen
 
-# セキュリティ向上: 非rootユーザーで実行
-RUN useradd -m -u 1000 appuser && \
-        chmod +x entrypoint.sh && \
-        chown -R appuser:appuser /app
+# .venvの所有権を変更し、entrypoint.shを実行可能に
+RUN chown -R appuser:appuser /app/.venv && \
+        chmod +x entrypoint.sh
 
 USER appuser
 
@@ -79,15 +81,15 @@ CMD ["--reload"]
 # 本番ステージ: 最適化されたイメージ（開発用依存関係なし）
 FROM base AS production
 
-# ビルダーステージから本番用依存関係のみをコピー
-COPY --from=builder /app/.venv /app/.venv
+# セキュリティ向上: 非rootユーザーを先に作成
+RUN useradd -m -u 1000 appuser
 
-COPY . .
+# ビルダーステージから本番用依存関係をコピー（appuserの所有権で）
+COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
-# セキュリティ向上: 非rootユーザーで実行
-RUN useradd -m -u 1000 appuser && \
-        chmod +x entrypoint.sh && \
-        chown -R appuser:appuser /app
+COPY --chown=appuser:appuser . .
+
+RUN chmod +x entrypoint.sh
 
 USER appuser
 
