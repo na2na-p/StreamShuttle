@@ -159,6 +159,9 @@ class YoutubeResolver(YoutubeResolverInterface):
             "no_get_comments": True,  # コメント取得を無効化（不要なメタデータ削減）
             "writesubtitles": False,  # 字幕を取得しない
             "writethumbnail": False,  # サムネイルを取得しない
+            # YouTube署名解決のためのリモートコンポーネント有効化
+            # Denoランタイムを使用してJavaScriptチャレンジを解決
+            "extractor_args": {"youtube": {"remote_components": ["ejs:github"]}},
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
