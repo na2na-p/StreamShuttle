@@ -61,10 +61,20 @@ FROM base AS production
 RUN useradd -m -u 1000 appuser
 
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
+COPY --from=builder --chown=appuser:appuser /root/.local/share/uv /home/appuser/.local/share/uv
 
 COPY --chown=appuser:appuser . .
 
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh && \
+    find /app/.venv/bin -type f -exec chmod +x {} \; && \
+    for link in /app/.venv/bin/python*; do \
+        if [ -L "$link" ]; then \
+            target=$(readlink "$link"); \
+            new_target=$(echo "$target" | sed 's|/root/|/home/appuser/|g'); \
+            rm "$link"; \
+            ln -s "$new_target" "$link"; \
+        fi \
+    done
 
 USER appuser
 
