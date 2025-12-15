@@ -47,7 +47,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         uv sync --frozen
 
 RUN chown -R appuser:appuser /app/.venv && \
-        chmod +x entrypoint.sh
+        chmod +x entrypoint.sh /app/.venv/bin/*
 
 USER appuser
 
@@ -64,7 +64,7 @@ COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
 COPY --chown=appuser:appuser . .
 
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh /app/.venv/bin/*
 
 USER appuser
 
