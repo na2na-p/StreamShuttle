@@ -16,6 +16,7 @@ from streamshuttle.di.container import (
     get_resolve_youtube_url_use_case,
     get_video_formats_use_case,
 )
+from streamshuttle.domain.model.youtube_url.youtube_url import YoutubeUrl
 from streamshuttle.handler.download_handler import router
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.shared.csrf_token import generate_csrf_token
@@ -235,7 +236,7 @@ def test_download_success(client, mock_resolve_use_case):
     # Assert
     assert response.status_code == 307
     assert response.headers["location"] == resolved_url
-    mock_resolve_use_case.execute.assert_called_once_with(youtube_url, None)
+    mock_resolve_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), None)
 
 
 def test_download_with_error(client, mock_resolve_use_case):
@@ -297,7 +298,7 @@ def test_download_calls_use_case_with_correct_params(client, mock_resolve_use_ca
     )
 
     # Assert
-    mock_resolve_use_case.execute.assert_called_once_with(youtube_url, None)
+    mock_resolve_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), None)
 
 
 def test_download_with_invalid_video_id(app):
@@ -503,4 +504,4 @@ def test_download_with_format_id(client, mock_resolve_use_case, mock_redis_dao):
     # Assert
     assert response.status_code == 307
     assert response.headers["location"] == resolved_url
-    mock_resolve_use_case.execute.assert_called_once_with(youtube_url, format_id)
+    mock_resolve_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), format_id)

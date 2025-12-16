@@ -5,17 +5,15 @@ UseCase層で定義されたYoutubeResolverインターフェースの実装ク�
 """
 
 import asyncio
-from urllib.parse import urlparse
 
 import yt_dlp
 
+from streamshuttle.domain.model.youtube_url.youtube_url import YoutubeUrl
+from streamshuttle.infrastructure.external.ytdlp_options_factory import YtDlpOptionsFactory
 from streamshuttle.shared.exceptions import InvalidUrlError, YouTubeResolverError
-from streamshuttle.usecase.external.youtube_resolver import (
-    YoutubeResolver as YoutubeResolverInterface,
-)
 
 
-class YoutubeResolver(YoutubeResolverInterface):
+class YoutubeResolver:
     """
     YouTube Resolver External実装クラス
 
@@ -56,22 +54,11 @@ class YoutubeResolver(YoutubeResolverInterface):
             InvalidUrlError: 無効なURLが指定された場合
         """
         try:
-            if not youtube_url.startswith(("http://", "https://")):
-                raise InvalidUrlError(f"無効なURLです: {youtube_url}")
-
-            parsed_url = urlparse(youtube_url)
-            allowed_domains = (
-                "youtube.com",
-                "www.youtube.com",
-                "m.youtube.com",
-                "youtu.be",
-                "www.youtu.be",
-            )
-            if parsed_url.hostname not in allowed_domains:
-                raise InvalidUrlError(f"YouTube URLのみサポートしています: {youtube_url}")
+            # URL検証はYoutubeUrl ValueObjectに委譲
+            validated_url = YoutubeUrl(_value=youtube_url)
 
             resolved_url = await asyncio.to_thread(
-                self._resolve_url_sync, youtube_url, format_id, use_hls
+                self._resolve_url_sync, validated_url.value, format_id, use_hls
             )
 
             try:
@@ -79,7 +66,7 @@ class YoutubeResolver(YoutubeResolverInterface):
             except (ValueError, KeyError, IndexError):
                 from streamshuttle.shared.config import config
 
-                ttl_seconds = config.CACHE_TTL_SECONDS
+                ttl_seconds = config.cache.ttl_seconds
 
         except InvalidUrlError:
             raise
@@ -130,44 +117,17 @@ class YoutubeResolver(YoutubeResolverInterface):
             format_spec = format_id
         else:
             if use_hls:
-                # HLS形式を許可（bestフォーマット）
                 format_spec = "best"
             else:
-                # プログレッシブMP4を優先（HLS除外）
                 format_spec = "best[protocol^=http][protocol!*=m3u8][ext=mp4]/best[ext=mp4]/best"
 
-        # yt-dlpオプション（Public利用を前提としたセキュリティ設定）
-        ydl_opts = {
-            # 基本設定
-            "format": format_spec,
-            "quiet": True,
-            "no_warnings": True,
-            # セキュリティ設定
-            "nocheckcertificate": False,
-            "no_color": True,
-            "no_call_home": True,
-            "socket_timeout": 30,
-            "extract_flat": "in_playlist",
-            "noplaylist": True,
-            # HTTPヘッダー設定（User-Agentを明示）
-            "http_headers": {"User-Agent": "StreamShuttle/1.0.0"},
-            # メモリリーク対策（yt-dlp Issue #8922）
-            # requestsハンドラーのメモリリークを回避するためlegacy handlerを使用
-            "compat_opts": ["prefer-legacy-http-handler"],
-            # メタデータ取得の最適化（メモリ効率改善）
-            "skip_download": True,  # ダウンロードは常にスキップ
-            "no_get_comments": True,  # コメント取得を無効化（不要なメタデータ削減）
-            "writesubtitles": False,  # 字幕を取得しない
-            "writethumbnail": False,  # サムネイルを取得しない
-            # YouTube署名解決のためのリモートコンポーネント有効化
-            # Denoランタイムを使用してJavaScriptチャレンジを解決
-            "extractor_args": {"youtube": {"remote_components": ["ejs:github"]}},
-        }
+        ydl_opts = YtDlpOptionsFactory.create_url_resolution_options(
+            format_spec=format_spec, use_hls=use_hls
+        )
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(youtube_url, download=False)
 
-        # URLを取得
         if info is None or "url" not in info:
             raise YouTubeResolverError(
                 f"YouTube URLの解決に失敗しました（URLが取得できませんでした）: {youtube_url}"

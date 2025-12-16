@@ -72,10 +72,10 @@ app.add_middleware(SecurityHeadersMiddleware)
 # 同一オリジンで動作するため、基本的にCORSは不要です。
 # ALLOWED_ORIGINS環境変数が設定されている場合のみ、外部オリジンからのアクセスを許可します。
 # （開発環境での利用や、特定の外部サービスとの連携が必要な場合を想定）
-if config.ALLOWED_ORIGINS:
+if config.cors.allowed_origins:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=config.ALLOWED_ORIGINS,  # 環境変数で明示的に許可されたオリジンのみ
+        allow_origins=config.cors.allowed_origins,  # 環境変数で明示的に許可されたオリジンのみ
         allow_credentials=False,  # クッキーを使用しないため無効化
         allow_methods=["GET", "POST"],  # 必要最小限のHTTPメソッドのみ許可
         allow_headers=["Content-Type", "Accept"],  # 必要最小限のヘッダーのみ許可

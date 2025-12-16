@@ -9,12 +9,9 @@ from datetime import UTC, datetime, timedelta
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.shared.config import config
 from streamshuttle.usecase.dto.stream_url_dto import StreamUrlDto
-from streamshuttle.usecase.query_service.stream_url_query_service import (
-    StreamUrlQueryService as StreamUrlQueryServiceInterface,
-)
 
 
-class StreamUrlQueryService(StreamUrlQueryServiceInterface):
+class StreamUrlQueryService:
     """
     ストリームURL QueryService実装クラス
 
@@ -76,7 +73,7 @@ class StreamUrlQueryService(StreamUrlQueryServiceInterface):
         ttl = await self._redis_dao.ttl(key=cache_key)
         if ttl is None or ttl < 0:
             # キーが存在しないまたはTTLが設定されていない場合はフォールバック
-            ttl = config.CACHE_TTL_SECONDS
+            ttl = config.cache.ttl_seconds
 
         expiry_at = datetime.now(UTC) + timedelta(seconds=ttl)
 

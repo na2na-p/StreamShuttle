@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
 from streamshuttle.di.container import get_resolve_youtube_url_use_case
+from streamshuttle.domain.model.youtube_url import YoutubeUrl
 from streamshuttle.shared.config import config
 from streamshuttle.shared.exceptions import (
     HlsNotSupportedError,
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/resolve")
-@limiter.limit(config.RATE_LIMIT_RESOLVE)
+@limiter.limit(config.rate_limit.resolve)
 async def resolve_url(
     request: Request,
     url: str = Query(..., description="YouTube動画URL"),
@@ -66,13 +67,17 @@ async def resolve_url(
     """
     try:
         # URL長制限チェック（DoS攻撃対策）
-        if len(url) > config.MAX_URL_LENGTH:
+        if len(url) > config.security.max_url_length:
             logger.warning(
-                f"URL length exceeds maximum: url_length={len(url)}, max={config.MAX_URL_LENGTH}"
+                f"URL length exceeds maximum: url_length={len(url)}, "
+                f"max={config.security.max_url_length}"
             )
-            raise InvalidUrlError(f"URL長が制限を超えています（最大: {config.MAX_URL_LENGTH}文字）")
+            raise InvalidUrlError(
+                f"URL長が制限を超えています（最大: {config.security.max_url_length}文字）"
+            )
 
-        resolved_url = await use_case.execute(url, use_hls=use_hls)
+        youtube_url = YoutubeUrl(_value=url)
+        resolved_url = await use_case.execute(youtube_url, use_hls=use_hls)
         return RedirectResponse(url=resolved_url, status_code=307)
     except InvalidVideoIdError:
         # ログに詳細を記録

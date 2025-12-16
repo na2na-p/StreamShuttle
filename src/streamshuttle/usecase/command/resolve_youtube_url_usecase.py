@@ -4,12 +4,11 @@ YouTube URL解決UseCaseモジュール
 YouTube URLをストリームURLに解決し、キャッシュに保存するUseCaseを定義します。
 """
 
-import re
 from datetime import UTC, datetime
 
 from streamshuttle.domain.model.stream_url import StreamUrl
+from streamshuttle.domain.model.youtube_url import YoutubeUrl
 from streamshuttle.domain.repository.stream_url_repository import StreamUrlRepository
-from streamshuttle.shared.exceptions import InvalidVideoIdError
 from streamshuttle.usecase.external.youtube_resolver import YoutubeResolver
 from streamshuttle.usecase.query_service.stream_url_query_service import StreamUrlQueryService
 
@@ -48,13 +47,13 @@ class ResolveYoutubeUrlUseCase:
         self._youtube_resolver = youtube_resolver
 
     async def execute(
-        self, youtube_url: str, format_id: str | None = None, use_hls: bool = False
+        self, youtube_url: YoutubeUrl, format_id: str | None = None, use_hls: bool = False
     ) -> str:
         """
         YouTube URLをストリームURLに解決します
 
         Args:
-            youtube_url: YouTube動画URL
+            youtube_url: YouTube動画URL（YoutubeUrl ValueObject）
             format_id: フォーマットID（オプショナル）
             use_hls: HLS形式の使用（デフォルト: False）
 
@@ -68,57 +67,20 @@ class ResolveYoutubeUrlUseCase:
             CacheException: キャッシュ操作に失敗した場合
             HlsNotSupportedError: HLS形式が拒否された場合
         """
-        video_id = self._extract_video_id(youtube_url)
+        video_id = youtube_url.extract_video_id()
 
-        cached = await self._query_service.find_by_video_id(video_id, use_hls)
+        cached = await self._query_service.find_by_video_id(str(video_id), use_hls)
 
         if cached and cached.expiry_at > datetime.now(UTC):
             return cached.resolved_url
 
         resolved_url, ttl_seconds = await self._youtube_resolver.resolve_url(
-            youtube_url, format_id, use_hls
+            str(youtube_url), format_id, use_hls
         )
 
         stream_url = StreamUrl.create(
-            video_id=video_id, resolved_url=resolved_url, ttl_seconds=ttl_seconds
+            video_id=str(video_id), resolved_url=resolved_url, ttl_seconds=ttl_seconds
         )
         await self._repository.save(stream_url, use_hls)
 
         return resolved_url
-
-    def _extract_video_id(self, url: str) -> str:
-        """
-        YouTube URLからvideo_idを抽出します
-
-        サポートするURL形式:
-        - https://www.youtube.com/watch?v=VIDEO_ID
-        - https://youtu.be/VIDEO_ID
-        - https://www.youtube.com/embed/VIDEO_ID
-        - https://m.youtube.com/watch?v=VIDEO_ID
-
-        Args:
-            url: YouTube動画URL
-
-        Returns:
-            str: 抽出されたvideo_id（11文字）
-
-        Raises:
-            InvalidVideoIdError: video_idの抽出に失敗した場合
-        """
-        # パターン1: youtube.com/watch?v=VIDEO_ID
-        match = re.search(r"[?&]v=([a-zA-Z0-9_-]{11})", url)
-        if match:
-            return match.group(1)
-
-        # パターン2: youtu.be/VIDEO_ID
-        match = re.search(r"youtu\.be/([a-zA-Z0-9_-]{11})", url)
-        if match:
-            return match.group(1)
-
-        # パターン3: youtube.com/embed/VIDEO_ID
-        match = re.search(r"youtube\.com/embed/([a-zA-Z0-9_-]{11})", url)
-        if match:
-            return match.group(1)
-
-        # 抽出失敗
-        raise InvalidVideoIdError(f"URLからvideo_idを抽出できませんでした: {url}")

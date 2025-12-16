@@ -5,19 +5,17 @@ UseCase層で定義されたVideoFormatQueryServiceインターフェースの�
 """
 
 import asyncio
-from urllib.parse import urlparse
 
 import yt_dlp
 
+from streamshuttle.domain.model.youtube_url.youtube_url import YoutubeUrl
+from streamshuttle.infrastructure.external.ytdlp_options_factory import YtDlpOptionsFactory
 from streamshuttle.shared.exceptions import InvalidUrlError, YouTubeResolverError
 from streamshuttle.usecase.dto.video_format_dto import VideoFormatDto
 from streamshuttle.usecase.dto.video_info_dto import VideoInfoDto
-from streamshuttle.usecase.query_service.video_format_query_service import (
-    VideoFormatQueryService as VideoFormatQueryServiceInterface,
-)
 
 
-class VideoFormatQueryService(VideoFormatQueryServiceInterface):
+class VideoFormatQueryService:
     """
     ビデオフォーマット QueryService実装クラス
 
@@ -53,25 +51,11 @@ class VideoFormatQueryService(VideoFormatQueryServiceInterface):
             InvalidUrlError: 無効なURLが指定された場合
         """
         try:
-            # 強化されたURL検証（Public利用を前提としたセキュリティ対策）
-            # 1. HTTPスキームのみ許可（file://, data:, javascript: などの危険なスキームを拒否）
-            if not youtube_url.startswith(("http://", "https://")):
-                raise InvalidUrlError(f"無効なURLです: {youtube_url}")
-
-            # 2. YouTubeドメインのみ許可（他のドメインへのアクセスを防止）
-            parsed_url = urlparse(youtube_url)
-            allowed_domains = (
-                "youtube.com",
-                "www.youtube.com",
-                "m.youtube.com",
-                "youtu.be",
-                "www.youtu.be",
-            )
-            if parsed_url.hostname not in allowed_domains:
-                raise InvalidUrlError(f"YouTube URLのみサポートしています: {youtube_url}")
+            # URL検証はYoutubeUrl ValueObjectに委譲
+            validated_url = YoutubeUrl(_value=youtube_url)
 
             # yt-dlpは同期処理のため、asyncio.to_threadで非同期化
-            info = await asyncio.to_thread(self._extract_info, youtube_url)
+            info = await asyncio.to_thread(self._extract_info, validated_url.value)
         except InvalidUrlError:
             # URL検証エラーはそのまま再送出（クライアント側のエラー）
             raise
@@ -138,24 +122,7 @@ class VideoFormatQueryService(VideoFormatQueryServiceInterface):
         Raises:
             yt_dlp.utils.DownloadError: 動画情報の取得に失敗した場合
         """
-        # yt-dlpオプション（Public利用を前提としたセキュリティ設定）
-        ydl_opts = {
-            # 基本設定
-            "quiet": True,  # ログ出力を抑制
-            "no_warnings": True,  # 警告を抑制
-            "extract_flat": False,  # 完全な情報を取得（フォーマット一覧取得に必要）
-            # セキュリティ設定
-            "nocheckcertificate": False,  # SSL証明書を検証（デフォルト動作を明示）
-            "no_color": True,  # カラー出力を無効化（ログインジェクション対策）
-            "no_call_home": True,  # yt-dlpの更新チェックを無効化（不要な外部通信を防止）
-            "socket_timeout": 30,  # タイムアウト設定（30秒）：長時間リクエストを防止
-            "noplaylist": True,  # プレイリストダウンロードを無効化（単一動画のみ処理）
-            # HTTPヘッダー設定（User-Agentを明示）
-            "http_headers": {"User-Agent": "StreamShuttle/0.1.0"},
-            # YouTube署名解決のためのリモートコンポーネント有効化
-            # Denoランタイムを使用してJavaScriptチャレンジを解決
-            "extractor_args": {"youtube": {"remote_components": ["ejs:github"]}},
-        }
+        ydl_opts = YtDlpOptionsFactory.create_format_extraction_options()
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(youtube_url, download=False)
