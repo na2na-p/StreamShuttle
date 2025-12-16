@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from streamshuttle.di.container import (
+    get_cached_format_url_use_case,
     get_redis_dao,
     get_resolve_youtube_url_use_case,
     get_video_formats_use_case,
@@ -28,6 +29,7 @@ from streamshuttle.shared.exceptions import (
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import ResolveYoutubeUrlUseCase
 from streamshuttle.usecase.dto.video_format_dto import VideoFormatDto
 from streamshuttle.usecase.dto.video_info_dto import VideoInfoDto
+from streamshuttle.usecase.query.get_cached_format_url_usecase import GetCachedFormatUrlUseCase
 from streamshuttle.usecase.query.get_video_formats_usecase import GetVideoFormatsUseCase
 
 
@@ -82,7 +84,24 @@ def mock_redis_dao():
 
 
 @pytest.fixture
-def client(app, mock_get_formats_use_case, mock_resolve_use_case, mock_redis_dao):
+def mock_cached_url_use_case():
+    """
+    モックされたGetCachedFormatUrlUseCaseを作成します
+
+    Returns:
+        AsyncMock: GetCachedFormatUrlUseCaseのモック
+    """
+    return AsyncMock(spec=GetCachedFormatUrlUseCase)
+
+
+@pytest.fixture
+def client(
+    app,
+    mock_get_formats_use_case,
+    mock_resolve_use_case,
+    mock_redis_dao,
+    mock_cached_url_use_case,
+):
     """
     テスト用クライアントを作成します
 
@@ -93,6 +112,7 @@ def client(app, mock_get_formats_use_case, mock_resolve_use_case, mock_redis_dao
         mock_get_formats_use_case: モックされたGetVideoFormatsUseCase
         mock_resolve_use_case: モックされたResolveYoutubeUrlUseCase
         mock_redis_dao: モックされたRedisDAO
+        mock_cached_url_use_case: モックされたGetCachedFormatUrlUseCase
 
     Returns:
         TestClient: FastAPI TestClient
@@ -100,6 +120,7 @@ def client(app, mock_get_formats_use_case, mock_resolve_use_case, mock_redis_dao
     app.dependency_overrides[get_video_formats_use_case] = lambda: mock_get_formats_use_case
     app.dependency_overrides[get_resolve_youtube_url_use_case] = lambda: mock_resolve_use_case
     app.dependency_overrides[get_redis_dao] = lambda: mock_redis_dao
+    app.dependency_overrides[get_cached_format_url_use_case] = lambda: mock_cached_url_use_case
     return TestClient(app)
 
 
@@ -478,7 +499,7 @@ def test_get_formats_returns_csrf_token(client, mock_get_formats_use_case, mock_
     assert len(data["csrf_token"]) > 0
 
 
-def test_download_with_format_id(client, mock_resolve_use_case, mock_redis_dao):
+def test_download_with_format_id(client, mock_resolve_use_case, mock_cached_url_use_case):
     """
     正常系: format_idパラメータが渡された場合、UseCaseに正しく渡されることを検証します
 
@@ -490,8 +511,8 @@ def test_download_with_format_id(client, mock_resolve_use_case, mock_redis_dao):
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     format_id = "137"
     resolved_url = "https://rr1---sn-example.googlevideo.com/videoplayback?..."
+    mock_cached_url_use_case.execute.return_value = None  # キャッシュミス
     mock_resolve_use_case.execute.return_value = resolved_url
-    mock_redis_dao.get.return_value = None
     csrf_token = generate_csrf_token()
 
     # Act
