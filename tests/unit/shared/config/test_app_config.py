@@ -90,5 +90,7 @@ def test_app_config_requires_csrf_secret_key(monkeypatch: pytest.MonkeyPatch) ->
     with pytest.raises(ValidationError) as exc_info:
         AppConfig()
 
-    # エラーメッセージにcsrf_secret_keyが含まれることを確認
-    assert "csrf_secret_key" in str(exc_info.value)
+    # カスタムエラーメッセージが含まれることを確認
+    error_message = str(exc_info.value)
+    assert "SECURITY_CSRF_SECRET_KEY" in error_message
+    assert "cp .env.example .env" in error_message

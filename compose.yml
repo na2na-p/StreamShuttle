@@ -16,7 +16,7 @@ services:
       - LOG_FORMAT=json
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
-      - CSRF_SECRET_KEY=your-secret-key-here-please-change-this-to-random-string
+      - SECURITY_CSRF_SECRET_KEY=your-secret-key-here-please-change-this-to-random-string
     depends_on:
       - redis
     develop:
