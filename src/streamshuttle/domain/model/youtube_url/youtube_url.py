@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
 
-from streamshuttle.domain.model.youtube_video_id.youtube_video_id import YoutubeVideoId
+from streamshuttle.domain.model.stream_url.video_id import VideoId
 from streamshuttle.shared.exceptions import InvalidUrlError, InvalidVideoIdError
 
 
@@ -44,11 +44,11 @@ class YoutubeUrl:
     def value(self) -> str:
         return self._value
 
-    def extract_video_id(self) -> YoutubeVideoId:
+    def extract_video_id(self) -> VideoId:
         """URLからvideo_idを抽出する
 
         Returns:
-            YoutubeVideoId: 抽出された動画ID
+            VideoId: 抽出された動画ID
 
         Raises:
             InvalidVideoIdError: video_idが抽出できない、または不正な形式の場合
@@ -60,17 +60,17 @@ class YoutubeUrl:
                 query_params = parse_qs(parsed.query)
                 video_id = query_params.get("v", [None])[0]
                 if video_id:
-                    return YoutubeVideoId(_value=video_id)
+                    return VideoId(_value=video_id)
 
             elif parsed.path.startswith("/embed/"):
                 video_id = parsed.path.split("/embed/")[1].split("/")[0].split("?")[0]
                 if video_id:
-                    return YoutubeVideoId(_value=video_id)
+                    return VideoId(_value=video_id)
 
         elif parsed.hostname in ("youtu.be", "www.youtu.be"):
             video_id = parsed.path.lstrip("/").split("/")[0].split("?")[0]
             if video_id:
-                return YoutubeVideoId(_value=video_id)
+                return VideoId(_value=video_id)
 
         raise InvalidVideoIdError(f"Could not extract video ID from URL: {self._value}")
 

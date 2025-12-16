@@ -6,7 +6,10 @@ from streamshuttle.shared.config.app_config import AppConfig
 
 
 def test_app_config_initialization_with_defaults() -> None:
-    """AppConfigがデフォルト値で正しく初期化されることを確認"""
+    """AppConfigがデフォルト値で正しく初期化されることを確認
+
+    NOTE: csrf_secret_keyは環境変数必須のため、conftest.pyで設定されたテスト用の値が使用される
+    """
     # Act
     config = AppConfig()
 
@@ -20,7 +23,8 @@ def test_app_config_initialization_with_defaults() -> None:
     assert config.rate_limit.formats == "5/minute"
     assert config.rate_limit.download == "5/minute"
     assert config.security.max_url_length == 2000
-    assert config.security.csrf_secret_key == "change-this-secret-key-in-production"
+    # csrf_secret_keyは環境変数必須（conftest.pyで設定されたテスト用の値）
+    assert config.security.csrf_secret_key == "test-secret-key-for-testing-only"
     assert config.security.csrf_token_expiry_seconds == 600
     assert config.log.level == "INFO"
     assert config.log.format == "json"
@@ -75,10 +79,16 @@ def test_app_config_nested_configs_are_frozen() -> None:
         config.redis.host = "new-host"  # type: ignore
 
 
-def test_app_config_uses_default_csrf_secret_key() -> None:
-    """AppConfigがデフォルトのCSRF秘密鍵を使用することを確認"""
-    # Act
-    config = AppConfig()
+def test_app_config_requires_csrf_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """AppConfigがCSRF秘密鍵未設定時にバリデーションエラーを発生させることを確認"""
+    from pydantic import ValidationError
 
-    # Assert
-    assert config.security.csrf_secret_key == "change-this-secret-key-in-production"
+    # Arrange: 環境変数をクリア
+    monkeypatch.delenv("SECURITY_CSRF_SECRET_KEY", raising=False)
+
+    # Act & Assert
+    with pytest.raises(ValidationError) as exc_info:
+        AppConfig()
+
+    # エラーメッセージにcsrf_secret_keyが含まれることを確認
+    assert "csrf_secret_key" in str(exc_info.value)

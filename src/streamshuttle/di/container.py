@@ -23,6 +23,9 @@ from streamshuttle.shared.config import config
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import (
     ResolveYoutubeUrlUseCase,
 )
+from streamshuttle.usecase.facade.get_or_resolve_stream_url_usecase import (
+    GetOrResolveStreamUrlUseCase,
+)
 from streamshuttle.usecase.query.get_cached_format_url_usecase import (
     GetCachedFormatUrlUseCase,
 )
@@ -148,9 +151,7 @@ def get_video_formats_use_case() -> GetVideoFormatsUseCase:
     Returns:
         GetVideoFormatsUseCase: 初期化済みのUseCaseインスタンス
     """
-    return GetVideoFormatsUseCase(
-        query_service=get_video_format_query_service(), cache_repository=get_cache_repository()
-    )
+    return GetVideoFormatsUseCase(query_service=get_video_format_query_service())
 
 
 def get_cached_format_url_use_case() -> GetCachedFormatUrlUseCase:
@@ -163,3 +164,18 @@ def get_cached_format_url_use_case() -> GetCachedFormatUrlUseCase:
         GetCachedFormatUrlUseCase: 初期化済みのUseCaseインスタンス
     """
     return GetCachedFormatUrlUseCase(cache_repository=get_cache_repository())
+
+
+def get_or_resolve_stream_url_use_case() -> GetOrResolveStreamUrlUseCase:
+    """
+    GetOrResolveStreamUrlUseCaseインスタンスを生成
+
+    キャッシュ取得とyt-dlp解決を統合したファサードUseCaseを生成します。
+
+    Returns:
+        GetOrResolveStreamUrlUseCase: 初期化済みのUseCaseインスタンス
+    """
+    return GetOrResolveStreamUrlUseCase(
+        cached_url_use_case=get_cached_format_url_use_case(),
+        resolve_use_case=get_resolve_youtube_url_use_case(),
+    )

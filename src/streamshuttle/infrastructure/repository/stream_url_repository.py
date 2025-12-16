@@ -4,6 +4,7 @@ StreamUrlRepository 実装モジュール
 Domain層で定義されたStreamUrlRepositoryインターフェースの実装クラスを定義します。
 """
 
+from streamshuttle.domain.model.cache_key.stream_url_cache_key import StreamUrlCacheKey
 from streamshuttle.domain.model.stream_url import StreamUrl, VideoId
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 
@@ -48,14 +49,13 @@ class StreamUrlRepository:
         Raises:
             CacheException: Redisへの保存に失敗した場合
         """
-        # use_hlsを含むキャッシュキーを生成
-        key = f"{stream_url.video_id.value}:hls:{use_hls}"
+        cache_key = StreamUrlCacheKey(_video_id=stream_url.video_id, _use_hls=use_hls)
         value = stream_url.resolved_url.value
         ttl = stream_url.cache_expiry.ttl_seconds()
 
-        await self._redis_dao.set(key=key, value=value, ttl=ttl)
+        await self._redis_dao.set(key=cache_key.value, value=value, ttl=ttl)
 
-    async def delete(self, video_id: VideoId) -> None:
+    async def delete(self, video_id: VideoId, use_hls: bool = False) -> None:
         """
         VideoIdに紐づくStreamUrlを削除します
 
@@ -64,9 +64,10 @@ class StreamUrlRepository:
 
         Args:
             video_id: 削除対象のVideoId
+            use_hls: HLS形式の使用フラグ（デフォルト: False）
 
         Raises:
             CacheException: Redisからの削除に失敗した場合
         """
-        key = video_id.value
-        await self._redis_dao.delete(key=key)
+        cache_key = StreamUrlCacheKey(_video_id=video_id, _use_hls=use_hls)
+        await self._redis_dao.delete(key=cache_key.value)

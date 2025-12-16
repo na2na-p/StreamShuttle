@@ -102,7 +102,25 @@ async def test_stream_url_repository_delete_calls_redis_dao_delete(repository, m
     await repository.delete(video_id=video_id)
 
     # Assert
-    mock_redis_dao.delete.assert_called_once_with(key="dQw4w9WgXcQ")
+    mock_redis_dao.delete.assert_called_once_with(key="dQw4w9WgXcQ:hls:False")
+
+
+async def test_stream_url_repository_delete_with_use_hls_true(repository, mock_redis_dao):
+    """
+    正常系: StreamUrlRepository.delete()がuse_hls=Trueで正しいキャッシュキーを使用することを確認
+
+    Arrange: VideoIdを準備
+    Act: StreamUrlRepository.delete()をuse_hls=Trueで呼び出す
+    Assert: RedisDaoのdelete()がHLS用キャッシュキーで呼び出されたことを確認
+    """
+    # Arrange
+    video_id = VideoId(_value="dQw4w9WgXcQ")
+
+    # Act
+    await repository.delete(video_id=video_id, use_hls=True)
+
+    # Assert
+    mock_redis_dao.delete.assert_called_once_with(key="dQw4w9WgXcQ:hls:True")
 
 
 async def test_stream_url_repository_delete_raises_cache_exception_on_redis_error(

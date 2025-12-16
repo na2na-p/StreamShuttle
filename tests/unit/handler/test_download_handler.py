@@ -12,12 +12,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from streamshuttle.di.container import (
-    get_cached_format_url_use_case,
+    get_or_resolve_stream_url_use_case,
     get_redis_dao,
-    get_resolve_youtube_url_use_case,
     get_video_formats_use_case,
 )
-from streamshuttle.domain.model.youtube_url.youtube_url import YoutubeUrl
 from streamshuttle.handler.download_handler import router
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.shared.csrf_token import generate_csrf_token
@@ -26,10 +24,11 @@ from streamshuttle.shared.exceptions import (
     InvalidVideoIdError,
     YouTubeResolverError,
 )
-from streamshuttle.usecase.command.resolve_youtube_url_usecase import ResolveYoutubeUrlUseCase
 from streamshuttle.usecase.dto.video_format_dto import VideoFormatDto
 from streamshuttle.usecase.dto.video_info_dto import VideoInfoDto
-from streamshuttle.usecase.query.get_cached_format_url_usecase import GetCachedFormatUrlUseCase
+from streamshuttle.usecase.facade.get_or_resolve_stream_url_usecase import (
+    GetOrResolveStreamUrlUseCase,
+)
 from streamshuttle.usecase.query.get_video_formats_usecase import GetVideoFormatsUseCase
 
 
@@ -62,14 +61,14 @@ def mock_get_formats_use_case():
 
 
 @pytest.fixture
-def mock_resolve_use_case():
+def mock_get_or_resolve_use_case():
     """
-    モックされたResolveYoutubeUrlUseCaseを作成します
+    モックされたGetOrResolveStreamUrlUseCaseを作成します
 
     Returns:
-        AsyncMock: ResolveYoutubeUrlUseCaseのモック
+        AsyncMock: GetOrResolveStreamUrlUseCaseのモック
     """
-    return AsyncMock(spec=ResolveYoutubeUrlUseCase)
+    return AsyncMock(spec=GetOrResolveStreamUrlUseCase)
 
 
 @pytest.fixture
@@ -84,23 +83,11 @@ def mock_redis_dao():
 
 
 @pytest.fixture
-def mock_cached_url_use_case():
-    """
-    モックされたGetCachedFormatUrlUseCaseを作成します
-
-    Returns:
-        AsyncMock: GetCachedFormatUrlUseCaseのモック
-    """
-    return AsyncMock(spec=GetCachedFormatUrlUseCase)
-
-
-@pytest.fixture
 def client(
     app,
     mock_get_formats_use_case,
-    mock_resolve_use_case,
+    mock_get_or_resolve_use_case,
     mock_redis_dao,
-    mock_cached_url_use_case,
 ):
     """
     テスト用クライアントを作成します
@@ -110,17 +97,17 @@ def client(
     Args:
         app: FastAPIアプリケーション
         mock_get_formats_use_case: モックされたGetVideoFormatsUseCase
-        mock_resolve_use_case: モックされたResolveYoutubeUrlUseCase
+        mock_get_or_resolve_use_case: モックされたGetOrResolveStreamUrlUseCase
         mock_redis_dao: モックされたRedisDAO
-        mock_cached_url_use_case: モックされたGetCachedFormatUrlUseCase
 
     Returns:
         TestClient: FastAPI TestClient
     """
     app.dependency_overrides[get_video_formats_use_case] = lambda: mock_get_formats_use_case
-    app.dependency_overrides[get_resolve_youtube_url_use_case] = lambda: mock_resolve_use_case
+    app.dependency_overrides[get_or_resolve_stream_url_use_case] = (
+        lambda: mock_get_or_resolve_use_case
+    )
     app.dependency_overrides[get_redis_dao] = lambda: mock_redis_dao
-    app.dependency_overrides[get_cached_format_url_use_case] = lambda: mock_cached_url_use_case
     return TestClient(app)
 
 
@@ -233,7 +220,7 @@ def test_get_formats_missing_url_parameter(client):
     assert response.status_code == 422
 
 
-def test_download_success(client, mock_resolve_use_case):
+def test_download_success(client, mock_get_or_resolve_use_case):
     """
     正常系: ダウンロードURLの取得が成功し、307リダイレクトが返されることを検証します
 
@@ -244,7 +231,7 @@ def test_download_success(client, mock_resolve_use_case):
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     resolved_url = "https://rr1---sn-example.googlevideo.com/videoplayback?..."
-    mock_resolve_use_case.execute.return_value = resolved_url
+    mock_get_or_resolve_use_case.execute.return_value = resolved_url
     csrf_token = generate_csrf_token()
 
     # Act
@@ -257,10 +244,10 @@ def test_download_success(client, mock_resolve_use_case):
     # Assert
     assert response.status_code == 307
     assert response.headers["location"] == resolved_url
-    mock_resolve_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), None)
+    mock_get_or_resolve_use_case.execute.assert_called_once_with(youtube_url, None)
 
 
-def test_download_with_error(client, mock_resolve_use_case):
+def test_download_with_error(client, mock_get_or_resolve_use_case):
     """
     異常系: UseCase失敗時、500 Internal Server Errorが返されることを検証します
 
@@ -270,7 +257,7 @@ def test_download_with_error(client, mock_resolve_use_case):
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    mock_resolve_use_case.execute.side_effect = Exception("Failed to resolve URL")
+    mock_get_or_resolve_use_case.execute.side_effect = Exception("Failed to resolve URL")
     csrf_token = generate_csrf_token()
 
     # Act
@@ -298,7 +285,7 @@ def test_download_missing_url_parameter(client):
     assert response.status_code == 422
 
 
-def test_download_calls_use_case_with_correct_params(client, mock_resolve_use_case):
+def test_download_calls_use_case_with_correct_params(client, mock_get_or_resolve_use_case):
     """
     UseCaseが正しいパラメータで呼び出されることを検証します
 
@@ -308,7 +295,7 @@ def test_download_calls_use_case_with_correct_params(client, mock_resolve_use_ca
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=test123"
     resolved_url = "https://example.com/video.mp4"
-    mock_resolve_use_case.execute.return_value = resolved_url
+    mock_get_or_resolve_use_case.execute.return_value = resolved_url
     csrf_token = generate_csrf_token()
 
     # Act
@@ -319,7 +306,7 @@ def test_download_calls_use_case_with_correct_params(client, mock_resolve_use_ca
     )
 
     # Assert
-    mock_resolve_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), None)
+    mock_get_or_resolve_use_case.execute.assert_called_once_with(youtube_url, None)
 
 
 def test_download_with_invalid_video_id(app):
@@ -330,7 +317,7 @@ def test_download_with_invalid_video_id(app):
     # Arrange
     mock_use_case = AsyncMock()
     mock_use_case.execute.side_effect = InvalidVideoIdError("Invalid video ID")
-    app.dependency_overrides[get_resolve_youtube_url_use_case] = lambda: mock_use_case
+    app.dependency_overrides[get_or_resolve_stream_url_use_case] = lambda: mock_use_case
     client = TestClient(app)
     csrf_token = generate_csrf_token()
 
@@ -353,7 +340,7 @@ def test_download_with_invalid_url(app):
     # Arrange
     mock_use_case = AsyncMock()
     mock_use_case.execute.side_effect = InvalidUrlError("Invalid URL")
-    app.dependency_overrides[get_resolve_youtube_url_use_case] = lambda: mock_use_case
+    app.dependency_overrides[get_or_resolve_stream_url_use_case] = lambda: mock_use_case
     client = TestClient(app)
     csrf_token = generate_csrf_token()
 
@@ -368,13 +355,13 @@ def test_download_with_invalid_url(app):
     assert "Invalid URL" in response.json()["detail"]
 
 
-def test_download_with_youtube_resolver_error(client, mock_resolve_use_case):
+def test_download_with_youtube_resolver_error(client, mock_get_or_resolve_use_case):
     """
     /downloadエンドポイントでYouTube解決に失敗した場合、
     502 Bad Gatewayが返されることを検証
     """
     # Arrange
-    mock_resolve_use_case.execute.side_effect = YouTubeResolverError("Failed to resolve")
+    mock_get_or_resolve_use_case.execute.side_effect = YouTubeResolverError("Failed to resolve")
     csrf_token = generate_csrf_token()
 
     # Act
@@ -388,13 +375,13 @@ def test_download_with_youtube_resolver_error(client, mock_resolve_use_case):
     assert "Failed to resolve URL from YouTube." in response.json()["detail"]
 
 
-def test_download_with_invalid_csrf_token(client, mock_resolve_use_case):
+def test_download_with_invalid_csrf_token(client, mock_get_or_resolve_use_case):
     """
     /downloadエンドポイントで無効なCSRFトークンが渡された場合、
     403 Forbiddenが返されることを検証
     """
     # Arrange
-    mock_resolve_use_case.execute.return_value = "https://example.com/video.mp4"
+    mock_get_or_resolve_use_case.execute.return_value = "https://example.com/video.mp4"
 
     # Act
     response = client.get(
@@ -414,7 +401,7 @@ def test_download_without_csrf_token(app):
     """
     # Arrange
     mock_use_case = AsyncMock()
-    app.dependency_overrides[get_resolve_youtube_url_use_case] = lambda: mock_use_case
+    app.dependency_overrides[get_or_resolve_stream_url_use_case] = lambda: mock_use_case
     client = TestClient(app)
 
     # Act
@@ -427,13 +414,13 @@ def test_download_without_csrf_token(app):
     assert response.status_code == 422
 
 
-def test_download_with_missing_referer(client, mock_resolve_use_case):
+def test_download_with_missing_referer(client, mock_get_or_resolve_use_case):
     """
     /downloadエンドポイントでRefererヘッダーがない場合、
     403 Forbiddenが返されることを検証
     """
     # Arrange
-    mock_resolve_use_case.execute.return_value = "https://example.com/video.mp4"
+    mock_get_or_resolve_use_case.execute.return_value = "https://example.com/video.mp4"
     csrf_token = generate_csrf_token()
 
     # Act
@@ -446,13 +433,13 @@ def test_download_with_missing_referer(client, mock_resolve_use_case):
     assert "Invalid request origin." in response.json()["detail"]
 
 
-def test_download_with_invalid_referer(client, mock_resolve_use_case):
+def test_download_with_invalid_referer(client, mock_get_or_resolve_use_case):
     """
     /downloadエンドポイントで不正なRefererヘッダーの場合、
     403 Forbiddenが返されることを検証
     """
     # Arrange
-    mock_resolve_use_case.execute.return_value = "https://example.com/video.mp4"
+    mock_get_or_resolve_use_case.execute.return_value = "https://example.com/video.mp4"
     csrf_token = generate_csrf_token()
 
     # Act
@@ -499,7 +486,7 @@ def test_get_formats_returns_csrf_token(client, mock_get_formats_use_case, mock_
     assert len(data["csrf_token"]) > 0
 
 
-def test_download_with_format_id(client, mock_resolve_use_case, mock_cached_url_use_case):
+def test_download_with_format_id(client, mock_get_or_resolve_use_case):
     """
     正常系: format_idパラメータが渡された場合、UseCaseに正しく渡されることを検証します
 
@@ -511,8 +498,7 @@ def test_download_with_format_id(client, mock_resolve_use_case, mock_cached_url_
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     format_id = "137"
     resolved_url = "https://rr1---sn-example.googlevideo.com/videoplayback?..."
-    mock_cached_url_use_case.execute.return_value = None  # キャッシュミス
-    mock_resolve_use_case.execute.return_value = resolved_url
+    mock_get_or_resolve_use_case.execute.return_value = resolved_url
     csrf_token = generate_csrf_token()
 
     # Act
@@ -525,4 +511,4 @@ def test_download_with_format_id(client, mock_resolve_use_case, mock_cached_url_
     # Assert
     assert response.status_code == 307
     assert response.headers["location"] == resolved_url
-    mock_resolve_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), format_id)
+    mock_get_or_resolve_use_case.execute.assert_called_once_with(youtube_url, format_id)

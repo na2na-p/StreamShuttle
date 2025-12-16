@@ -25,8 +25,7 @@ class SecurityConfig(BaseSettings):
         """,
     )
     csrf_secret_key: str = Field(
-        default="change-this-secret-key-in-production",
-        description="CSRFトークン署名用の秘密鍵（環境変数から取得）",
+        description="CSRF保護の秘密鍵（環境変数: SECURITY_CSRF_SECRET_KEY）",
     )
     csrf_token_expiry_seconds: int = Field(
         default=600, description="CSRFトークンの有効期限（秒）（デフォルト: 600秒 = 10分）"
