@@ -6,6 +6,8 @@ YouTube URLを直接ストリームURLに解決するExternalのインターフ�
 
 from typing import Protocol
 
+from streamshuttle.usecase.dto.resolved_url_result_dto import ResolvedUrlResultDto
+
 
 class YoutubeResolver(Protocol):
     """
@@ -20,7 +22,7 @@ class YoutubeResolver(Protocol):
 
     async def resolve_url(
         self, youtube_url: str, format_id: str | None = None, use_hls: bool = False
-    ) -> tuple[str, int]:
+    ) -> ResolvedUrlResultDto:
         """
         YouTube動画URLを直接ストリームURLに解決します
 
@@ -34,7 +36,7 @@ class YoutubeResolver(Protocol):
             use_hls: HLS形式の使用（デフォルト: False）
 
         Returns:
-            tuple[str, int]: (解決済みの直接ストリームURL, TTL秒数)
+            ResolvedUrlResultDto: 解決済みURL情報（URL、TTL秒数を含む）
 
         Raises:
             YouTubeResolverException: YouTube APIへのアクセスまたはURL解決に失敗した場合

@@ -11,6 +11,7 @@ import yt_dlp
 from streamshuttle.domain.model.youtube_url.youtube_url import YoutubeUrl
 from streamshuttle.infrastructure.external.ytdlp_options_factory import YtDlpOptionsFactory
 from streamshuttle.shared.exceptions import InvalidUrlError, YouTubeResolverError
+from streamshuttle.usecase.dto.resolved_url_result_dto import ResolvedUrlResultDto
 
 
 class YoutubeResolver:
@@ -31,7 +32,7 @@ class YoutubeResolver:
 
     async def resolve_url(
         self, youtube_url: str, format_id: str | None = None, use_hls: bool = False
-    ) -> tuple[str, int]:
+    ) -> ResolvedUrlResultDto:
         """
         YouTube動画URLを直接ストリームURLに解決します
 
@@ -47,7 +48,7 @@ class YoutubeResolver:
                 このパラメーターは既存動作に影響を与えません（後方互換性を維持）
 
         Returns:
-            tuple[str, int]: (解決済みの直接ストリームURL, TTL秒数)
+            ResolvedUrlResultDto: 解決済みURL情報（URL、TTL秒数を含む）
 
         Raises:
             YouTubeResolverError: YouTube APIへのアクセスまたはURL解決に失敗した場合
@@ -75,7 +76,7 @@ class YoutubeResolver:
         except Exception as e:
             raise YouTubeResolverError(f"予期しないエラーが発生しました: {youtube_url}") from e
 
-        return resolved_url, ttl_seconds
+        return ResolvedUrlResultDto(resolved_url=resolved_url, ttl_seconds=ttl_seconds)
 
     def _resolve_url_sync(
         self, youtube_url: str, format_id: str | None = None, use_hls: bool = False

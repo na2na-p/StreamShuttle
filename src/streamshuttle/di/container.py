@@ -7,6 +7,9 @@ DIコンテナモジュール
 
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.infrastructure.external.youtube_resolver import YoutubeResolver
+from streamshuttle.infrastructure.query_service.format_url_query_service import (
+    FormatUrlQueryService,
+)
 from streamshuttle.infrastructure.query_service.stream_url_query_service import (
     StreamUrlQueryService,
 )
@@ -102,6 +105,18 @@ def get_video_format_query_service() -> VideoFormatQueryService:
     return VideoFormatQueryService()
 
 
+def get_format_url_query_service() -> FormatUrlQueryService:
+    """
+    FormatUrlQueryServiceインスタンスを生成
+
+    FormatUrlQueryServiceに必要なRedisDaoを注入して生成します。
+
+    Returns:
+        FormatUrlQueryService: 初期化済みのQueryServiceインスタンス
+    """
+    return FormatUrlQueryService(redis_dao=get_redis_dao())
+
+
 def get_youtube_resolver() -> YoutubeResolver:
     """
     YoutubeResolverインスタンスを生成
@@ -125,7 +140,6 @@ def get_resolve_youtube_url_use_case() -> ResolveYoutubeUrlUseCase:
     """
     return ResolveYoutubeUrlUseCase(
         repository=get_stream_url_repository(),
-        query_service=get_stream_url_query_service(),
         youtube_resolver=get_youtube_resolver(),
     )
 
@@ -163,7 +177,7 @@ def get_cached_format_url_use_case() -> GetCachedFormatUrlUseCase:
     Returns:
         GetCachedFormatUrlUseCase: 初期化済みのUseCaseインスタンス
     """
-    return GetCachedFormatUrlUseCase(cache_repository=get_cache_repository())
+    return GetCachedFormatUrlUseCase(query_service=get_format_url_query_service())
 
 
 def get_or_resolve_stream_url_use_case() -> GetOrResolveStreamUrlUseCase:

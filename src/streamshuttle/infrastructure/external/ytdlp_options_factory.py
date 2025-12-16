@@ -34,7 +34,6 @@ class YtDlpOptionsFactory:
             "extractor_args": {
                 "youtube": {
                     "skip": ["hls"],
-                    "remote_components": ["ejs:github"],
                 }
             },
         }
