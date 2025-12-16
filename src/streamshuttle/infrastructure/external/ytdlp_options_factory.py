@@ -33,8 +33,7 @@ class YtDlpOptionsFactory:
             "compat_opts": ["prefer-legacy-http-handler"],
             "extractor_args": {
                 "youtube": {
-                    "player_client": ["android", "web"],
-                    "skip": ["hls", "dash"],
+                    "skip": ["hls"],
                     "remote_components": ["ejs:github"],
                 }
             },

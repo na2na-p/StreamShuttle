@@ -87,11 +87,6 @@ class TestYtDlpOptionsFactory:
     @pytest.mark.parametrize(
         "extractor, args_key",
         [
-            pytest.param(
-                "youtube",
-                "player_client",
-                id="正常系: youtubeエクストラクタにplayer_clientが設定される",
-            ),
             pytest.param("youtube", "skip", id="正常系: youtubeエクストラクタにskipが設定される"),
             pytest.param(
                 "youtube",
@@ -182,8 +177,8 @@ class TestYtDlpOptionsFactory:
             pytest.param(
                 "best",
                 False,
-                ["hls", "dash"],
-                id="正常系: HLS無効時はhls/dashの両方をスキップ",
+                ["hls"],
+                id="正常系: HLS無効時はhlsをスキップ",
             ),
             pytest.param(
                 "best",
