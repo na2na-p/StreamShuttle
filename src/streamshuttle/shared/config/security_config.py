@@ -28,15 +28,12 @@ class SecurityConfig(BaseSettings):
     )
     csrf_secret_key: str = Field(
         description=(
-            "Secret key for CSRF protection "
-            "(environment variable: SECURITY_CSRF_SECRET_KEY)"
+            "Secret key for CSRF protection (environment variable: SECURITY_CSRF_SECRET_KEY)"
         ),
     )
     csrf_token_expiry_seconds: int = Field(
         default=600,
-        description=(
-            "CSRF token expiry time in seconds (default: 600 seconds = 10 minutes)"
-        ),
+        description=("CSRF token expiry time in seconds (default: 600 seconds = 10 minutes)"),
     )
 
     model_config = {
