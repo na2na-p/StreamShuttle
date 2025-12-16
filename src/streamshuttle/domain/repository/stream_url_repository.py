@@ -16,8 +16,8 @@ class StreamUrlRepository(Protocol):
     StreamUrl Aggregateの永続化操作を定義するプロトコルです。
     このインターフェースはDomain層に配置され、Infrastructure層で実装されます。
 
-    DDD原則に従い、参照系メソッド（find_by_*等）はQueryServiceに分離されます。
-    このRepositoryはコマンド（書き込み）操作のみを定義します。
+    CQRS原則に基づき、更新系UseCaseからAggregate単位でのキャッシュ取得が可能です。
+    参照系UseCase向けのDTO取得はQueryServiceで行います。
     """
 
     async def save(self, stream_url: StreamUrl, use_hls: bool = False) -> None:
@@ -51,5 +51,28 @@ class StreamUrlRepository(Protocol):
 
         Raises:
             CacheException: データストアからの削除に失敗した場合
+        """
+        ...
+
+    async def find_by_video_id(self, video_id: str, use_hls: bool = False) -> StreamUrl | None:
+        """
+        VideoIdに紐づくStreamUrlを取得します
+
+        指定されたVideoIdに対応するStreamUrl Aggregateをデータストアから取得します。
+        該当するStreamUrlが存在しない場合はNoneを返します。
+
+        use_hlsパラメータによってキャッシュキーが異なるため、同じvideo_idでも
+        use_hlsの値によって異なる結果が返される可能性があります。
+
+        Args:
+            video_id: YouTube動画ID（11桁の英数字）
+            use_hls: HLS形式の使用フラグ（デフォルト: False）
+
+        Returns:
+            StreamUrl | None:
+                キャッシュが存在する場合はStreamUrl Aggregate、存在しない場合はNone
+
+        Raises:
+            CacheException: データストアからの取得に失敗した場合
         """
         ...

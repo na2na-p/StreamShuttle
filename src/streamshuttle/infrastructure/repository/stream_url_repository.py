@@ -7,6 +7,7 @@ Domain層で定義されたStreamUrlRepositoryインターフェースの実装�
 from streamshuttle.domain.model.cache_key.stream_url_cache_key import StreamUrlCacheKey
 from streamshuttle.domain.model.stream_url import StreamUrl, VideoId
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
+from streamshuttle.shared.config import config
 
 
 class StreamUrlRepository:
@@ -16,8 +17,8 @@ class StreamUrlRepository:
     StreamUrlRepositoryインターフェースのRedis実装です。
     RedisDaoを使用してStreamUrl Aggregateの永続化を行います。
 
-    このRepositoryはコマンド（書き込み）操作のみを提供します。
-    参照系の操作はQueryServiceに分離されます。
+    CQRS原則に基づき、更新系UseCaseからAggregate単位でのキャッシュ取得が可能です。
+    参照系UseCase向けのDTO取得はQueryServiceで行います。
 
     Attributes:
         _redis_dao: Redis操作を行うDAOインスタンス
@@ -71,3 +72,42 @@ class StreamUrlRepository:
         """
         cache_key = StreamUrlCacheKey(_video_id=video_id, _use_hls=use_hls)
         await self._redis_dao.delete(key=cache_key.value)
+
+    async def find_by_video_id(self, video_id: str, use_hls: bool = False) -> StreamUrl | None:
+        """
+        VideoIdに紐づくStreamUrlを取得します
+
+        指定されたVideoIdに対応するStreamUrl Aggregateをデータストアから取得します。
+        該当するStreamUrlが存在しない場合はNoneを返します。
+
+        Redisキーは「video_id:hls:use_hls」形式で、use_hlsの値によって
+        異なるキャッシュエントリを参照します。
+
+        Args:
+            video_id: YouTube動画ID（11桁の英数字）
+            use_hls: HLS形式の使用フラグ（デフォルト: False）
+
+        Returns:
+            StreamUrl | None:
+                キャッシュが存在する場合はStreamUrl Aggregate、存在しない場合はNone
+
+        Raises:
+            CacheException: Redisからの取得に失敗した場合
+        """
+        video_id_vo = VideoId(_value=video_id)
+        cache_key = StreamUrlCacheKey(_video_id=video_id_vo, _use_hls=use_hls)
+
+        cached_url = await self._redis_dao.get(key=cache_key.value)
+
+        if cached_url is None:
+            return None
+
+        ttl = await self._redis_dao.ttl(key=cache_key.value)
+        if ttl is None or ttl < 0:
+            ttl = config.cache.ttl_seconds
+
+        return StreamUrl.create(
+            video_id=video_id,
+            resolved_url=cached_url,
+            ttl_seconds=ttl,
+        )

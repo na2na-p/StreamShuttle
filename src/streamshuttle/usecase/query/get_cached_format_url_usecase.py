@@ -1,41 +1,41 @@
 """
 キャッシュされたフォーマットURLを取得するUseCaseモジュール
 
-キャッシュから特定のフォーマットURLを取得します。
+QueryServiceを通じてキャッシュから特定のフォーマットURL情報を取得します。
 """
 
-from streamshuttle.domain.model.cache_key.format_url_cache_key import FormatUrlCacheKey
-from streamshuttle.domain.repository.cache_repository import CacheRepository
+from streamshuttle.usecase.dto.format_url_dto import FormatUrlDto
+from streamshuttle.usecase.query_service.format_url_query_service import (
+    FormatUrlQueryService,
+)
 
 
 class GetCachedFormatUrlUseCase:
     """
     キャッシュされたフォーマットURLを取得するUseCase
 
-    指定されたvideo_idとformat_idに対応するフォーマットURLを
-    キャッシュから取得します。
+    指定されたvideo_idとformat_idに対応するフォーマットURL情報を
+    QueryServiceを通じてキャッシュから取得します。
     """
 
-    def __init__(self, cache_repository: CacheRepository) -> None:
+    def __init__(self, query_service: FormatUrlQueryService) -> None:
         """
         GetCachedFormatUrlUseCaseを初期化します
 
         Args:
-            cache_repository: Cache Repository
+            query_service: FormatUrl QueryService
         """
-        self._cache_repository = cache_repository
+        self._query_service = query_service
 
-    async def execute(self, video_id: str, format_id: str) -> str | None:
+    async def execute(self, video_id: str, format_id: str) -> FormatUrlDto | None:
         """
-        キャッシュからフォーマットURLを取得する
+        キャッシュからフォーマットURL情報を取得する
 
         Args:
             video_id: YouTube動画ID
             format_id: フォーマットID
 
         Returns:
-            str | None: キャッシュされたURL。存在しない場合はNone
+            FormatUrlDto | None: キャッシュされたフォーマットURL情報。存在しない場合はNone
         """
-        cache_key = FormatUrlCacheKey(_video_id=video_id, _format_id=format_id)
-        cached_url = await self._cache_repository.get(cache_key.value)
-        return cached_url
+        return await self._query_service.find_by_video_and_format_id(video_id, format_id)

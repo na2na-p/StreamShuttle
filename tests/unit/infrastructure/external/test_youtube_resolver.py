@@ -12,6 +12,7 @@ import yt_dlp
 
 from streamshuttle.infrastructure.external.youtube_resolver import YoutubeResolver
 from streamshuttle.shared.exceptions import InvalidUrlError, YouTubeResolverError
+from streamshuttle.usecase.dto.resolved_url_result_dto import ResolvedUrlResultDto
 
 
 @pytest.fixture
@@ -27,11 +28,11 @@ def resolver():
 
 async def test_youtube_resolver_resolve_url_returns_stream_url(resolver):
     """
-    正常系: YoutubeResolver.resolve_url()がストリームURLとTTLを返すことを確認
+    正常系: YoutubeResolver.resolve_url()がResolvedUrlResultDtoを返すことを確認
 
     Arrange: yt-dlpの_resolve_url_syncをモックしてストリームURLを返す
     Act: YoutubeResolver.resolve_url()を呼び出す
-    Assert: ストリームURLとTTLが返されることを確認
+    Assert: ResolvedUrlResultDtoが返されることを確認
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -40,11 +41,12 @@ async def test_youtube_resolver_resolve_url_returns_stream_url(resolver):
     with patch.object(resolver, "_resolve_url_sync", return_value=expected_stream_url):
         with patch.object(resolver, "_extract_ttl_from_url", return_value=3600):
             # Act
-            result_url, result_ttl = await resolver.resolve_url(youtube_url=youtube_url)
+            result = await resolver.resolve_url(youtube_url=youtube_url)
 
     # Assert
-    assert result_url == expected_stream_url
-    assert result_ttl == 3600
+    assert isinstance(result, ResolvedUrlResultDto)
+    assert result.resolved_url == expected_stream_url
+    assert result.ttl_seconds == 3600
 
 
 async def test_youtube_resolver_resolve_url_raises_invalid_url_exception_for_no_scheme(resolver):
@@ -131,11 +133,11 @@ def test_youtube_resolver_resolve_url_sync_raises_youtube_resolver_exception_for
 async def test_youtube_resolver_resolve_url_with_format_id(resolver):
     """
     正常系: format_idが指定された場合、YoutubeResolver.resolve_url()が
-    format_idを含めてストリームURLとTTLを返すことを確認
+    format_idを含めてResolvedUrlResultDtoを返すことを確認
 
     Arrange: yt-dlpの_resolve_url_syncをモックしてストリームURLを返す
     Act: YoutubeResolver.resolve_url()にformat_idを指定して呼び出す
-    Assert: ストリームURLとTTLが返され、_resolve_url_syncにformat_idが渡されることを確認
+    Assert: ResolvedUrlResultDtoが返され、_resolve_url_syncにformat_idが渡されることを確認
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -145,24 +147,23 @@ async def test_youtube_resolver_resolve_url_with_format_id(resolver):
     with patch.object(resolver, "_resolve_url_sync", return_value=expected_stream_url) as mock_sync:
         with patch.object(resolver, "_extract_ttl_from_url", return_value=3600):
             # Act
-            result_url, result_ttl = await resolver.resolve_url(
-                youtube_url=youtube_url, format_id=format_id
-            )
+            result = await resolver.resolve_url(youtube_url=youtube_url, format_id=format_id)
 
     # Assert
-    assert result_url == expected_stream_url
-    assert result_ttl == 3600
+    assert isinstance(result, ResolvedUrlResultDto)
+    assert result.resolved_url == expected_stream_url
+    assert result.ttl_seconds == 3600
     mock_sync.assert_called_once_with(youtube_url, format_id, False)
 
 
 async def test_youtube_resolver_resolve_url_without_format_id(resolver):
     """
     正常系: format_idが指定されない場合、YoutubeResolver.resolve_url()が
-    Noneを渡してストリームURLとTTLを返すことを確認
+    Noneを渡してResolvedUrlResultDtoを返すことを確認
 
     Arrange: yt-dlpの_resolve_url_syncをモックしてストリームURLを返す
     Act: YoutubeResolver.resolve_url()をformat_id指定なしで呼び出す
-    Assert: ストリームURLとTTLが返され、_resolve_url_syncにNoneが渡されることを確認
+    Assert: ResolvedUrlResultDtoが返され、_resolve_url_syncにNoneが渡されることを確認
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -171,11 +172,12 @@ async def test_youtube_resolver_resolve_url_without_format_id(resolver):
     with patch.object(resolver, "_resolve_url_sync", return_value=expected_stream_url) as mock_sync:
         with patch.object(resolver, "_extract_ttl_from_url", return_value=3600):
             # Act
-            result_url, result_ttl = await resolver.resolve_url(youtube_url=youtube_url)
+            result = await resolver.resolve_url(youtube_url=youtube_url)
 
     # Assert
-    assert result_url == expected_stream_url
-    assert result_ttl == 3600
+    assert isinstance(result, ResolvedUrlResultDto)
+    assert result.resolved_url == expected_stream_url
+    assert result.ttl_seconds == 3600
     mock_sync.assert_called_once_with(youtube_url, None, False)
 
 

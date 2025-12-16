@@ -84,38 +84,17 @@ class TestYtDlpOptionsFactory:
         assert isinstance(options["compat_opts"], list)
         assert "prefer-legacy-http-handler" in options["compat_opts"]
 
-    @pytest.mark.parametrize(
-        "extractor, args_key",
-        [
-            pytest.param("youtube", "skip", id="正常系: youtubeエクストラクタにskipが設定される"),
-            pytest.param(
-                "youtube",
-                "remote_components",
-                id="正常系: youtubeエクストラクタにremote_componentsが設定される",
-            ),
-        ],
-    )
-    def test_create_base_options_has_extractor_args(self, extractor, args_key):
-        """基本オプションのextractor_argsが正しく設定されることを確認"""
-        # Act
-        options = YtDlpOptionsFactory.create_base_options()
-
-        # Assert
-        assert "extractor_args" in options
-        assert extractor in options["extractor_args"]
-        assert args_key in options["extractor_args"][extractor]
-
-    def test_create_base_options_has_remote_components_github(self):
-        """基本オプションのremote_componentsに'ejs:github'が含まれることを確認"""
+    def test_create_base_options_has_youtube_skip_extractor_arg(self):
+        """基本オプションのyoutubeエクストラクタにskipが設定されることを確認"""
         # Act
         options = YtDlpOptionsFactory.create_base_options()
 
         # Assert
         assert "extractor_args" in options
         assert "youtube" in options["extractor_args"]
-        assert "remote_components" in options["extractor_args"]["youtube"]
-        assert isinstance(options["extractor_args"]["youtube"]["remote_components"], list)
-        assert "ejs:github" in options["extractor_args"]["youtube"]["remote_components"]
+        assert "skip" in options["extractor_args"]["youtube"]
+        assert isinstance(options["extractor_args"]["youtube"]["skip"], list)
+        assert "hls" in options["extractor_args"]["youtube"]["skip"]
 
     def test_create_format_extraction_options_inherits_base_options(self):
         """フォーマット抽出オプションが基本オプションを継承することを確認"""

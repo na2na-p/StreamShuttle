@@ -47,23 +47,23 @@ class GetOrResolveStreamUrlUseCase:
             InvalidVideoIdError: video_idの抽出に失敗した場合
             YouTubeResolverError: YouTube APIへのアクセスに失敗した場合
         """
+        youtube_url = YoutubeUrl(_value=url)
+
         if format_id:
-            youtube_url = YoutubeUrl(_value=url)
             video_id = youtube_url.extract_video_id()
 
             try:
-                cached_url = await self.cached_url_use_case.execute(str(video_id), format_id)
-                if cached_url:
+                cached_dto = await self.cached_url_use_case.execute(str(video_id), format_id)
+                if cached_dto:
                     logger.info(
                         f"Using cached URL for format: "
                         f"video_id={str(video_id)}, format_id={format_id}"
                     )
-                    return cached_url
+                    return cached_dto.resolved_url
             except (InvalidUrlError, InvalidVideoIdError) as e:
                 logger.warning(
                     f"Failed to get cached URL: url={url}, format_id={format_id}, error={e}"
                 )
 
         logger.info(f"Cache miss, resolving URL with yt-dlp: url={url}, format_id={format_id}")
-        youtube_url_for_resolve = YoutubeUrl(_value=url)
-        return await self.resolve_use_case.execute(youtube_url_for_resolve, format_id)
+        return await self.resolve_use_case.execute(youtube_url, format_id)

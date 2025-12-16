@@ -4,6 +4,7 @@ GetOrResolveStreamUrlUseCaseユニットテスト
 キャッシュ優先でストリームURLを取得するファサードUseCaseのテストです。
 """
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -11,12 +12,23 @@ import pytest
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import (
     ResolveYoutubeUrlUseCase,
 )
+from streamshuttle.usecase.dto.format_url_dto import FormatUrlDto
 from streamshuttle.usecase.facade.get_or_resolve_stream_url_usecase import (
     GetOrResolveStreamUrlUseCase,
 )
 from streamshuttle.usecase.query.get_cached_format_url_usecase import (
     GetCachedFormatUrlUseCase,
 )
+
+
+def create_format_url_dto(video_id: str, format_id: str, resolved_url: str) -> FormatUrlDto:
+    """テスト用のFormatUrlDtoを作成するヘルパー関数"""
+    return FormatUrlDto(
+        video_id=video_id,
+        format_id=format_id,
+        resolved_url=resolved_url,
+        expiry_at=datetime.now(UTC) + timedelta(hours=1),
+    )
 
 
 @pytest.fixture
@@ -36,12 +48,12 @@ class TestGetOrResolveStreamUrlUseCase:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "url,format_id,cached_url,resolved_url,expected_result,expected_cache_calls,expected_resolve_calls",
+        "url,format_id,cached_dto,resolved_url,expected_result,expected_cache_calls,expected_resolve_calls",
         [
             pytest.param(
                 "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
                 "137",
-                "https://cached.example.com/video.mp4",
+                create_format_url_dto("dQw4w9WgXcQ", "137", "https://cached.example.com/video.mp4"),
                 None,
                 "https://cached.example.com/video.mp4",
                 1,
@@ -76,7 +88,7 @@ class TestGetOrResolveStreamUrlUseCase:
         mock_resolve_use_case,
         url,
         format_id,
-        cached_url,
+        cached_dto,
         resolved_url,
         expected_result,
         expected_cache_calls,
@@ -84,7 +96,7 @@ class TestGetOrResolveStreamUrlUseCase:
     ):
         """execute メソッドが正しく動作することを検証"""
         # Arrange
-        mock_cached_url_use_case.execute.return_value = cached_url
+        mock_cached_url_use_case.execute.return_value = cached_dto
         mock_resolve_use_case.execute.return_value = resolved_url
 
         use_case = GetOrResolveStreamUrlUseCase(
@@ -109,7 +121,8 @@ class TestGetOrResolveStreamUrlUseCase:
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         format_id = "137"
         cached_url = "https://cached.example.com/video.mp4"
-        mock_cached_url_use_case.execute.return_value = cached_url
+        cached_dto = create_format_url_dto("dQw4w9WgXcQ", format_id, cached_url)
+        mock_cached_url_use_case.execute.return_value = cached_dto
 
         use_case = GetOrResolveStreamUrlUseCase(
             cached_url_use_case=mock_cached_url_use_case,
