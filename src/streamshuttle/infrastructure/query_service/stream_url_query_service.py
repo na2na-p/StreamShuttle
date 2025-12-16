@@ -6,6 +6,8 @@ UseCase層で定義されたStreamUrlQueryServiceインターフェースの実�
 
 from datetime import UTC, datetime, timedelta
 
+from streamshuttle.domain.model.cache_key.stream_url_cache_key import StreamUrlCacheKey
+from streamshuttle.domain.model.stream_url.video_id import VideoId
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.shared.config import config
 from streamshuttle.usecase.dto.stream_url_dto import StreamUrlDto
@@ -59,25 +61,19 @@ class StreamUrlQueryService:
         Raises:
             CacheException: キャッシュ操作に失敗した場合
         """
-        # use_hlsを含むキャッシュキーを生成
-        cache_key = f"{video_id}:hls:{use_hls}"
+        cache_key = StreamUrlCacheKey(_video_id=VideoId(_value=video_id), _use_hls=use_hls)
 
-        # Redisからキャッシュを取得
-        cached_url = await self._redis_dao.get(key=cache_key)
+        cached_url = await self._redis_dao.get(key=cache_key.value)
 
-        # キャッシュが存在しない場合はNoneを返す
         if cached_url is None:
             return None
 
-        # Redisから正確なTTLを取得
-        ttl = await self._redis_dao.ttl(key=cache_key)
+        ttl = await self._redis_dao.ttl(key=cache_key.value)
         if ttl is None or ttl < 0:
-            # キーが存在しないまたはTTLが設定されていない場合はフォールバック
             ttl = config.cache.ttl_seconds
 
         expiry_at = datetime.now(UTC) + timedelta(seconds=ttl)
 
-        # DTOを生成して返す
         return StreamUrlDto(
             video_id=video_id,
             resolved_url=cached_url,

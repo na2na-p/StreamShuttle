@@ -4,6 +4,7 @@
 キャッシュから特定のフォーマットURLを取得します。
 """
 
+from streamshuttle.domain.model.cache_key.format_url_cache_key import FormatUrlCacheKey
 from streamshuttle.domain.repository.cache_repository import CacheRepository
 
 
@@ -35,6 +36,6 @@ class GetCachedFormatUrlUseCase:
         Returns:
             str | None: キャッシュされたURL。存在しない場合はNone
         """
-        cache_key = f"format_url:{video_id}:{format_id}"
-        cached_url = await self._cache_repository.get(cache_key)
+        cache_key = FormatUrlCacheKey(_video_id=video_id, _format_id=format_id)
+        cached_url = await self._cache_repository.get(cache_key.value)
         return cached_url

@@ -121,27 +121,33 @@ def test_extract_video_id_failure(url: str):
 
 
 @pytest.mark.parametrize(
-    "url",
+    "url,expected_message",
     [
         pytest.param(
-            "https://www.youtube.com/watch?v=invalid@id",
-            id="異常系: 不正な文字を含むvideo_id（@記号）",
+            "https://www.youtube.com/watch?v=invalid@idx",
+            "ビデオIDの形式が不正です",
+            id="異常系: 不正な文字を含むvideo_id（@記号、11文字）",
         ),
-        pytest.param("https://www.youtube.com/watch?v=short", id="異常系: 11文字未満のvideo_id"),
+        pytest.param(
+            "https://www.youtube.com/watch?v=short",
+            "11文字である必要があります",
+            id="異常系: 11文字未満のvideo_id",
+        ),
         pytest.param(
             "https://www.youtube.com/watch?v=toolongvideoid",
+            "11文字である必要があります",
             id="異常系: 11文字を超えるvideo_id",
         ),
     ],
 )
-def test_extract_video_id_invalid_format(url: str):
+def test_extract_video_id_invalid_format(url: str, expected_message: str):
     """異常系: 不正な形式のvideo_idでInvalidVideoIdErrorが発生"""
     youtube_url = YoutubeUrl(_value=url)
 
     with pytest.raises(InvalidVideoIdError) as exc_info:
         youtube_url.extract_video_id()
 
-    assert "Invalid video ID format" in str(exc_info.value)
+    assert expected_message in str(exc_info.value)
 
 
 def test_youtube_url_immutability():

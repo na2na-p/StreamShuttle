@@ -191,3 +191,22 @@ def test_video_id_inequality():
 
     # Act & Assert
     assert video_id_1 != video_id_2
+
+
+def test_video_id_str():
+    """
+    正常系: str()でビデオID文字列が取得できることを確認
+
+    Arrange: 有効なビデオID文字列を準備
+    Act: VideoIdを生成し、str()で文字列変換
+    Assert: 元の文字列と一致することを確認
+    """
+    # Arrange
+    valid_id = "dQw4w9WgXcQ"
+    video_id = VideoId(_value=valid_id)
+
+    # Act
+    result = str(video_id)
+
+    # Assert
+    assert result == valid_id

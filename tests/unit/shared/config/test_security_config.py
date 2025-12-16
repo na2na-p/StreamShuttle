@@ -76,10 +76,18 @@ def test_security_config_env_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.csrf_secret_key == "correct-secret"
 
 
-def test_security_config_uses_default_csrf_secret_key() -> None:
-    """SecurityConfigがCSRF秘密鍵のデフォルト値を使用することを確認"""
-    # Act
-    config = SecurityConfig()
+def test_security_config_raises_error_when_csrf_secret_key_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SecurityConfigがCSRF秘密鍵未設定時にバリデーションエラーを発生させることを確認"""
+    from pydantic import ValidationError
 
-    # Assert
-    assert config.csrf_secret_key == "change-this-secret-key-in-production"
+    # Arrange: 環境変数をクリア
+    monkeypatch.delenv("SECURITY_CSRF_SECRET_KEY", raising=False)
+
+    # Act & Assert
+    with pytest.raises(ValidationError) as exc_info:
+        SecurityConfig()
+
+    # エラーメッセージにcsrf_secret_keyが含まれることを確認
+    assert "csrf_secret_key" in str(exc_info.value)

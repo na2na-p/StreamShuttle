@@ -20,12 +20,14 @@ from streamshuttle.shared.exceptions import (
     YouTubeResolverError,
 )
 from streamshuttle.shared.rate_limiter import limiter
+from streamshuttle.shared.validators.url_validator import UrlValidator
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import (
     ResolveYoutubeUrlUseCase,
 )
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+url_validator = UrlValidator(max_length=config.security.max_url_length)
 
 
 @router.get("/resolve")
@@ -66,15 +68,7 @@ async def resolve_url(
             - 500 Internal Server Error: その他の予期しないエラー
     """
     try:
-        # URL長制限チェック（DoS攻撃対策）
-        if len(url) > config.security.max_url_length:
-            logger.warning(
-                f"URL length exceeds maximum: url_length={len(url)}, "
-                f"max={config.security.max_url_length}"
-            )
-            raise InvalidUrlError(
-                f"URL長が制限を超えています（最大: {config.security.max_url_length}文字）"
-            )
+        url_validator.validate_length(url)
 
         youtube_url = YoutubeUrl(_value=url)
         resolved_url = await use_case.execute(youtube_url, use_hls=use_hls)

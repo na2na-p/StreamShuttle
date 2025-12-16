@@ -54,3 +54,7 @@ class VideoId:
         # YouTube Video IDは英数字、ハイフン、アンダースコアのみ
         if not re.match(r"^[a-zA-Z0-9_-]{11}$", self._value):
             raise InvalidVideoIdError(f"ビデオIDの形式が不正です: {self._value}")
+
+    def __str__(self) -> str:
+        """ビデオIDの文字列表現を返す"""
+        return self._value
