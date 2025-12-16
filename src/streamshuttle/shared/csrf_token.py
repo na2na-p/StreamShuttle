@@ -26,7 +26,7 @@ def generate_csrf_token() -> str:
     timestamp = str(int(time.time()))
 
     signature = hmac.new(
-        config.CSRF_SECRET_KEY.encode(), timestamp.encode(), hashlib.sha256
+        config.security.csrf_secret_key.encode(), timestamp.encode(), hashlib.sha256
     ).hexdigest()
 
     token_data = f"{timestamp}:{signature}"
@@ -52,7 +52,7 @@ def verify_csrf_token(token: str) -> bool:
         timestamp_str, signature = token_data.split(":")
 
         expected_signature = hmac.new(
-            config.CSRF_SECRET_KEY.encode(), timestamp_str.encode(), hashlib.sha256
+            config.security.csrf_secret_key.encode(), timestamp_str.encode(), hashlib.sha256
         ).hexdigest()
 
         if not hmac.compare_digest(signature, expected_signature):
@@ -61,7 +61,7 @@ def verify_csrf_token(token: str) -> bool:
         timestamp = int(timestamp_str)
         current_time = int(time.time())
 
-        if current_time - timestamp > config.CSRF_TOKEN_EXPIRY_SECONDS:
+        if current_time - timestamp > config.security.csrf_token_expiry_seconds:
             return False
 
         return True

@@ -13,12 +13,18 @@ from streamshuttle.infrastructure.query_service.stream_url_query_service import 
 from streamshuttle.infrastructure.query_service.video_format_query_service import (
     VideoFormatQueryService,
 )
+from streamshuttle.infrastructure.repository.redis_cache_repository import (
+    RedisCacheRepository,
+)
 from streamshuttle.infrastructure.repository.stream_url_repository import (
     StreamUrlRepository,
 )
 from streamshuttle.shared.config import config
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import (
     ResolveYoutubeUrlUseCase,
+)
+from streamshuttle.usecase.query.get_cached_format_url_usecase import (
+    GetCachedFormatUrlUseCase,
 )
 from streamshuttle.usecase.query.get_cached_stream_url_usecase import (
     GetCachedStreamUrlUseCase,
@@ -41,8 +47,20 @@ def get_redis_dao() -> RedisDao:
     """
     global _redis_dao
     if _redis_dao is None:
-        _redis_dao = RedisDao(host=config.REDIS_HOST, port=config.REDIS_PORT, db=config.REDIS_DB)
+        _redis_dao = RedisDao(host=config.redis.host, port=config.redis.port, db=config.redis.db)
     return _redis_dao
+
+
+def get_cache_repository() -> RedisCacheRepository:
+    """
+    CacheRepositoryインスタンスを生成
+
+    CacheRepositoryに必要なRedisDaoを注入して生成します。
+
+    Returns:
+        RedisCacheRepository: 初期化済みのCacheRepositoryインスタンス
+    """
+    return RedisCacheRepository(redis_dao=get_redis_dao())
 
 
 def get_stream_url_repository() -> StreamUrlRepository:
@@ -130,4 +148,18 @@ def get_video_formats_use_case() -> GetVideoFormatsUseCase:
     Returns:
         GetVideoFormatsUseCase: 初期化済みのUseCaseインスタンス
     """
-    return GetVideoFormatsUseCase(query_service=get_video_format_query_service())
+    return GetVideoFormatsUseCase(
+        query_service=get_video_format_query_service(), cache_repository=get_cache_repository()
+    )
+
+
+def get_cached_format_url_use_case() -> GetCachedFormatUrlUseCase:
+    """
+    GetCachedFormatUrlUseCaseインスタンスを生成
+
+    必要な依存関係を注入して生成します。
+
+    Returns:
+        GetCachedFormatUrlUseCase: 初期化済みのUseCaseインスタンス
+    """
+    return GetCachedFormatUrlUseCase(cache_repository=get_cache_repository())

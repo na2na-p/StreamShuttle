@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from streamshuttle.di.container import get_resolve_youtube_url_use_case
+from streamshuttle.domain.model.youtube_url.youtube_url import YoutubeUrl
 from streamshuttle.handler.resolve_handler import router
 from streamshuttle.shared.exceptions import (
     HlsNotSupportedError,
@@ -83,7 +84,7 @@ def test_resolve_url_success(client, mock_use_case):
     # Assert
     assert response.status_code == 307
     assert response.headers["location"] == resolved_url
-    mock_use_case.execute.assert_called_once_with(youtube_url, use_hls=False)
+    mock_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), use_hls=False)
 
 
 def test_resolve_url_with_invalid_video_id(client, mock_use_case):
@@ -184,7 +185,7 @@ def test_resolve_url_calls_use_case_with_correct_params(client, mock_use_case):
     client.get(f"/resolve?url={youtube_url}")
 
     # Assert
-    mock_use_case.execute.assert_called_once_with(youtube_url, use_hls=False)
+    mock_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), use_hls=False)
 
 
 def test_resolve_url_missing_url_parameter(client):
@@ -219,7 +220,7 @@ def test_resolve_url_with_use_hls_true(client, mock_use_case):
     # Assert
     assert response.status_code == 307
     assert response.headers["location"] == resolved_url
-    mock_use_case.execute.assert_called_once_with(youtube_url, use_hls=True)
+    mock_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), use_hls=True)
 
 
 def test_resolve_url_with_use_hls_false(client, mock_use_case):
@@ -240,7 +241,7 @@ def test_resolve_url_with_use_hls_false(client, mock_use_case):
     # Assert
     assert response.status_code == 307
     assert response.headers["location"] == resolved_url
-    mock_use_case.execute.assert_called_once_with(youtube_url, use_hls=False)
+    mock_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), use_hls=False)
 
 
 def test_resolve_url_with_hls_not_supported_error(client, mock_use_case):

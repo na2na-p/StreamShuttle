@@ -4,13 +4,13 @@
 YouTube動画の利用可能なフォーマット情報を取得するQueryServiceのインターフェースを定義します。
 """
 
-from abc import ABC, abstractmethod
+from typing import Protocol
 
 from streamshuttle.usecase.dto.video_format_dto import VideoFormatDto
 from streamshuttle.usecase.dto.video_info_dto import VideoInfoDto
 
 
-class VideoFormatQueryService(ABC):
+class VideoFormatQueryService(Protocol):
     """
     ビデオフォーマット QueryServiceインターフェース
 
@@ -21,7 +21,6 @@ class VideoFormatQueryService(ABC):
     実装クラスはInfrastructure層に配置されます。
     """
 
-    @abstractmethod
     async def get_available_formats(
         self, youtube_url: str
     ) -> tuple[VideoInfoDto, list[VideoFormatDto]]:
@@ -41,4 +40,4 @@ class VideoFormatQueryService(ABC):
             YouTubeResolverException: YouTube APIへのアクセスまたはURL解決に失敗した場合
             InvalidUrlException: 無効なURLが指定された場合
         """
-        pass
+        ...

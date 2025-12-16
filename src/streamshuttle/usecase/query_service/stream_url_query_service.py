@@ -4,12 +4,12 @@
 キャッシュされたストリームURL情報を取得するQueryServiceのインターフェースを定義します。
 """
 
-from abc import ABC, abstractmethod
+from typing import Protocol
 
 from streamshuttle.usecase.dto.stream_url_dto import StreamUrlDto
 
 
-class StreamUrlQueryService(ABC):
+class StreamUrlQueryService(Protocol):
     """
     ストリームURL QueryServiceインターフェース
 
@@ -20,7 +20,6 @@ class StreamUrlQueryService(ABC):
     実装クラスはInfrastructure層に配置されます。
     """
 
-    @abstractmethod
     async def find_by_video_id(self, video_id: str, use_hls: bool = False) -> StreamUrlDto | None:
         """
         YouTube動画IDでストリームURL情報を取得します
@@ -42,4 +41,4 @@ class StreamUrlQueryService(ABC):
         Raises:
             CacheException: キャッシュ操作に失敗した場合
         """
-        pass
+        ...

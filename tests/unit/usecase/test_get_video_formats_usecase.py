@@ -22,14 +22,24 @@ class TestGetVideoFormatsUseCase:
         return AsyncMock()
 
     @pytest.fixture
-    def usecase(self, mock_query_service: AsyncMock) -> GetVideoFormatsUseCase:
+    def mock_cache_repository(self) -> AsyncMock:
+        """CacheRepositoryのモックを作成"""
+        return AsyncMock()
+
+    @pytest.fixture
+    def usecase(
+        self, mock_query_service: AsyncMock, mock_cache_repository: AsyncMock
+    ) -> GetVideoFormatsUseCase:
         """GetVideoFormatsUseCaseのインスタンスを作成"""
-        return GetVideoFormatsUseCase(mock_query_service)
+        return GetVideoFormatsUseCase(mock_query_service, mock_cache_repository)
 
     async def test_execute_returns_formats(
-        self, usecase: GetVideoFormatsUseCase, mock_query_service: AsyncMock
+        self,
+        usecase: GetVideoFormatsUseCase,
+        mock_query_service: AsyncMock,
+        mock_cache_repository: AsyncMock,
     ) -> None:
-        """フォーマット一覧を取得できることをテスト"""
+        """フォーマット一覧を取得し、キャッシュに保存することをテスト"""
         # Arrange
         youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         expected_video_info = VideoInfoDto(
@@ -75,12 +85,32 @@ class TestGetVideoFormatsUseCase:
         assert video_info == expected_video_info
         assert formats == expected_formats
         mock_query_service.get_available_formats.assert_called_once_with(youtube_url)
+        # キャッシュへの保存を確認
+        assert mock_cache_repository.set.call_count == 3
+        mock_cache_repository.set.assert_any_call(
+            key="format_url:dQw4w9WgXcQ:137",
+            value="https://example.com/format137.mp4",
+            ttl=3600,
+        )
+        mock_cache_repository.set.assert_any_call(
+            key="format_url:dQw4w9WgXcQ:248",
+            value="https://example.com/format248.webm",
+            ttl=3600,
+        )
+        mock_cache_repository.set.assert_any_call(
+            key="format_url:dQw4w9WgXcQ:136",
+            value="https://example.com/format136.mp4",
+            ttl=3600,
+        )
 
     async def test_execute_returns_empty_list(
-        self, usecase: GetVideoFormatsUseCase, mock_query_service: AsyncMock
+        self,
+        usecase: GetVideoFormatsUseCase,
+        mock_query_service: AsyncMock,
+        mock_cache_repository: AsyncMock,
     ) -> None:
         """
-        フォーマットが見つからない場合、空のリストを返すことをテスト
+        フォーマットが見つからない場合、空のリストを返し、キャッシュに保存しないことをテスト
         """
         # Arrange
         youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -98,9 +128,14 @@ class TestGetVideoFormatsUseCase:
         assert video_info == expected_video_info
         assert formats == []
         mock_query_service.get_available_formats.assert_called_once_with(youtube_url)
+        # フォーマットが空の場合はキャッシュへ保存されない
+        mock_cache_repository.set.assert_not_called()
 
     async def test_execute_calls_query_service_correctly(
-        self, usecase: GetVideoFormatsUseCase, mock_query_service: AsyncMock
+        self,
+        usecase: GetVideoFormatsUseCase,
+        mock_query_service: AsyncMock,
+        mock_cache_repository: AsyncMock,
     ) -> None:
         """QueryServiceが正しく呼び出されることをテスト"""
         # Arrange
@@ -117,7 +152,10 @@ class TestGetVideoFormatsUseCase:
         mock_query_service.get_available_formats.assert_called_once_with(youtube_url)
 
     async def test_execute_with_different_url_format(
-        self, usecase: GetVideoFormatsUseCase, mock_query_service: AsyncMock
+        self,
+        usecase: GetVideoFormatsUseCase,
+        mock_query_service: AsyncMock,
+        mock_cache_repository: AsyncMock,
     ) -> None:
         """異なるURL形式でも正しく動作することをテスト"""
         # Arrange
@@ -149,3 +187,9 @@ class TestGetVideoFormatsUseCase:
         assert video_info == expected_video_info
         assert formats == expected_formats
         mock_query_service.get_available_formats.assert_called_once_with(youtube_url)
+        # キャッシュへの保存を確認
+        mock_cache_repository.set.assert_called_once_with(
+            key="format_url:dQw4w9WgXcQ:22",
+            value="https://example.com/format22.mp4",
+            ttl=3600,
+        )

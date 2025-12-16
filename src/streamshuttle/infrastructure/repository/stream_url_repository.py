@@ -5,13 +5,10 @@ Domain層で定義されたStreamUrlRepositoryインターフェースの実装�
 """
 
 from streamshuttle.domain.model.stream_url import StreamUrl, VideoId
-from streamshuttle.domain.repository.stream_url_repository import (
-    StreamUrlRepository as StreamUrlRepositoryInterface,
-)
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 
 
-class StreamUrlRepository(StreamUrlRepositoryInterface):
+class StreamUrlRepository:
     """
     StreamUrlRepository 実装クラス
 

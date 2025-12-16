@@ -1,0 +1,1 @@
+"""YouTube URL ValueObject テストモジュール"""

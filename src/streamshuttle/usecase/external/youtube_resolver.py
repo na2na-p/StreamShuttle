@@ -4,10 +4,10 @@ YouTube Resolver Externalインターフェース定義モジュール
 YouTube URLを直接ストリームURLに解決するExternalのインターフェースを定義します。
 """
 
-from abc import ABC, abstractmethod
+from typing import Protocol
 
 
-class YoutubeResolver(ABC):
+class YoutubeResolver(Protocol):
     """
     YouTube Resolver Externalインターフェース
 
@@ -18,7 +18,6 @@ class YoutubeResolver(ABC):
     実装クラスはInfrastructure層に配置されます。
     """
 
-    @abstractmethod
     async def resolve_url(
         self, youtube_url: str, format_id: str | None = None, use_hls: bool = False
     ) -> tuple[str, int]:
@@ -41,4 +40,4 @@ class YoutubeResolver(ABC):
             YouTubeResolverException: YouTube APIへのアクセスまたはURL解決に失敗した場合
             InvalidUrlException: 無効なURLが指定された場合
         """
-        pass
+        ...

@@ -86,10 +86,10 @@ def setup_logging() -> None:
     ルートロガーを設定します。
     """
     # ログレベルの取得と検証
-    log_level = getattr(logging, config.LOG_LEVEL.upper(), logging.INFO)
+    log_level = getattr(logging, config.log.level.upper(), logging.INFO)
 
     # フォーマッターの選択
-    if config.LOG_FORMAT.lower() == "json":
+    if config.log.format.lower() == "json":
         formatter = JSONFormatter()
     else:
         # テキスト形式（開発環境向け）
