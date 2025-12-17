@@ -59,7 +59,7 @@ class VideoFormatsRepository:
             await self._redis_dao.set(
                 key=cache_key.value,
                 value=json_data,
-                ttl_seconds=config.cache.ttl_seconds,
+                ttl=config.cache.ttl_seconds,
             )
         except Exception:
             pass

@@ -61,7 +61,7 @@ async def test_save_caches_video_formats(repository, mock_redis_dao, video_id, v
     call_args = mock_redis_dao.set.call_args
     assert call_args.kwargs["key"] == f"video_formats:{video_id}"
     assert "dQw4w9WgXcQ" in call_args.kwargs["value"]  # JSON内にvideo_idが含まれる
-    assert call_args.kwargs["ttl_seconds"] > 0
+    assert call_args.kwargs["ttl"] > 0
 
 
 @pytest.mark.asyncio
