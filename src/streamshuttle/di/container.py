@@ -16,11 +16,17 @@ from streamshuttle.infrastructure.query_service.stream_url_query_service import 
 from streamshuttle.infrastructure.query_service.video_format_query_service import (
     VideoFormatQueryService,
 )
+from streamshuttle.infrastructure.query_service.video_formats_cache_query_service import (
+    VideoFormatsCacheQueryService,
+)
 from streamshuttle.infrastructure.repository.redis_cache_repository import (
     RedisCacheRepository,
 )
 from streamshuttle.infrastructure.repository.stream_url_repository import (
     StreamUrlRepository,
+)
+from streamshuttle.infrastructure.repository.video_formats_repository import (
+    VideoFormatsRepository,
 )
 from streamshuttle.shared.config import config
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import (
@@ -105,6 +111,30 @@ def get_video_format_query_service() -> VideoFormatQueryService:
     return VideoFormatQueryService()
 
 
+def get_video_formats_repository() -> VideoFormatsRepository:
+    """
+    VideoFormatsRepositoryインスタンスを生成
+
+    VideoFormatsRepositoryに必要なRedisDaoを注入して生成します。
+
+    Returns:
+        VideoFormatsRepository: 初期化済みのRepositoryインスタンス
+    """
+    return VideoFormatsRepository(redis_dao=get_redis_dao())
+
+
+def get_video_formats_cache_query_service() -> VideoFormatsCacheQueryService:
+    """
+    VideoFormatsCacheQueryServiceインスタンスを生成
+
+    VideoFormatsCacheQueryServiceに必要なRedisDaoを注入して生成します。
+
+    Returns:
+        VideoFormatsCacheQueryService: 初期化済みのQueryServiceインスタンス
+    """
+    return VideoFormatsCacheQueryService(redis_dao=get_redis_dao())
+
+
 def get_format_url_query_service() -> FormatUrlQueryService:
     """
     FormatUrlQueryServiceインスタンスを生成
@@ -160,12 +190,17 @@ def get_video_formats_use_case() -> GetVideoFormatsUseCase:
     """
     GetVideoFormatsUseCaseインスタンスを生成
 
-    必要な依存関係を注入して生成します。
+    必要な依存関係（yt-dlp QueryService、キャッシュRepository、キャッシュQueryService）
+    をすべて注入して生成します。
 
     Returns:
         GetVideoFormatsUseCase: 初期化済みのUseCaseインスタンス
     """
-    return GetVideoFormatsUseCase(query_service=get_video_format_query_service())
+    return GetVideoFormatsUseCase(
+        query_service=get_video_format_query_service(),
+        repository=get_video_formats_repository(),
+        cache_query_service=get_video_formats_cache_query_service(),
+    )
 
 
 def get_cached_format_url_use_case() -> GetCachedFormatUrlUseCase:
