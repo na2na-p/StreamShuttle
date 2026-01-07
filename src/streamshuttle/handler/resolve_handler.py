@@ -35,7 +35,7 @@ url_validator = UrlValidator(max_length=config.security.max_url_length)
 async def resolve_url(
     request: Request,
     url: str = Query(..., description="YouTube動画URL"),
-    use_hls: bool = Query(False, description="HLS形式の使用（デフォルト: false）"),
+    hls: bool = Query(False, description="HLS形式の使用（デフォルト: false）"),
     use_case: ResolveYoutubeUrlUseCase = Depends(get_resolve_youtube_url_use_case),
 ) -> RedirectResponse:
     """
@@ -52,7 +52,7 @@ async def resolve_url(
     Args:
         request: FastAPI Request（レート制限用）
         url: YouTube動画URL（必須クエリパラメータ）
-        use_hls: HLS形式を使用するか（デフォルト: false）
+        hls: HLS形式を使用するか（デフォルト: false）
             - true: HLS形式を使用
             - false: プログレッシブダウンロードのみ使用
         use_case: ResolveYoutubeUrlUseCase（DIコンテナから注入）
@@ -71,7 +71,7 @@ async def resolve_url(
         url_validator.validate_length(url)
 
         youtube_url = YoutubeUrl(_value=url)
-        resolved_url = await use_case.execute(youtube_url, use_hls=use_hls)
+        resolved_url = await use_case.execute(youtube_url, hls=hls)
         return RedirectResponse(url=resolved_url, status_code=307)
     except InvalidVideoIdError:
         # ログに詳細を記録
@@ -85,11 +85,11 @@ async def resolve_url(
         raise HTTPException(status_code=400, detail="Invalid URL format.")
     except HlsNotSupportedError:
         # ログに詳細を記録
-        logger.warning(f"HLS format rejected: url={url}, use_hls=False")
+        logger.warning(f"HLS format rejected: url={url}, hls=False")
         # クライアントには具体的なメッセージ
         raise HTTPException(
             status_code=400,
-            detail="This video requires HLS support. Set use_hls=true or use a compatible player.",
+            detail="This video requires HLS support. Set hls=true or use a compatible player.",
         )
     except YouTubeResolverError:
         # ログに詳細を記録（外部サービスエラーの詳細は内部のみ）

@@ -57,14 +57,14 @@ class YtDlpOptionsFactory:
         return options
 
     @staticmethod
-    def create_url_resolution_options(format_spec: str, use_hls: bool = False) -> dict:
+    def create_url_resolution_options(format_spec: str, hls: bool = False) -> dict:
         """URL解決用オプションを生成
 
         指定されたフォーマットでストリームURLを解決するためのオプション。
 
         Args:
             format_spec: yt-dlpのフォーマット指定文字列
-            use_hls: HLS形式を使用するかどうか
+            hls: HLS形式を使用するかどうか
 
         Returns:
             dict: yt-dlpオプション辞書
@@ -80,7 +80,7 @@ class YtDlpOptionsFactory:
             }
         )
 
-        if use_hls:
+        if hls:
             options["extractor_args"]["youtube"]["skip"] = ["dash"]
 
         return options

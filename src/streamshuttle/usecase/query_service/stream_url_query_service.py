@@ -20,19 +20,19 @@ class StreamUrlQueryService(Protocol):
     実装クラスはInfrastructure層に配置されます。
     """
 
-    async def find_by_video_id(self, video_id: str, use_hls: bool = False) -> StreamUrlDto | None:
+    async def find_by_video_id(self, video_id: str, hls: bool = False) -> StreamUrlDto | None:
         """
         YouTube動画IDでストリームURL情報を取得します
 
         Redisキャッシュから指定された動画IDに対応するストリームURL情報を取得します。
         キャッシュに存在しない場合はNoneを返します。
 
-        use_hlsパラメータによってキャッシュキーが異なるため、同じvideo_idでも
-        use_hlsの値によって異なる結果が返される可能性があります。
+        hlsパラメータによってキャッシュキーが異なるため、同じvideo_idでも
+        hlsの値によって異なる結果が返される可能性があります。
 
         Args:
             video_id: YouTube動画ID（11桁の英数字）
-            use_hls: HLS形式の使用フラグ（デフォルト: False）
+            hls: HLS形式の使用フラグ（デフォルト: False）
 
         Returns:
             StreamUrlDto | None:

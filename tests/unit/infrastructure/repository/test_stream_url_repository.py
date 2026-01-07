@@ -59,7 +59,7 @@ async def test_stream_url_repository_save_calls_redis_dao_set(repository, mock_r
     # Assert
     mock_redis_dao.set.assert_called_once()
     call_args = mock_redis_dao.set.call_args
-    # use_hls=Falseがデフォルトなので、キャッシュキーに含まれる
+    # hls=Falseがデフォルトなので、キャッシュキーに含まれる
     assert call_args.kwargs["key"] == "dQw4w9WgXcQ:hls:False"
     assert call_args.kwargs["value"] == "https://example.com/video.m3u8"
     assert call_args.kwargs["ttl"] > 0
@@ -105,19 +105,19 @@ async def test_stream_url_repository_delete_calls_redis_dao_delete(repository, m
     mock_redis_dao.delete.assert_called_once_with(key="dQw4w9WgXcQ:hls:False")
 
 
-async def test_stream_url_repository_delete_with_use_hls_true(repository, mock_redis_dao):
+async def test_stream_url_repository_delete_with_hls_true(repository, mock_redis_dao):
     """
-    正常系: StreamUrlRepository.delete()がuse_hls=Trueで正しいキャッシュキーを使用することを確認
+    正常系: StreamUrlRepository.delete()がhls=Trueで正しいキャッシュキーを使用することを確認
 
     Arrange: VideoIdを準備
-    Act: StreamUrlRepository.delete()をuse_hls=Trueで呼び出す
+    Act: StreamUrlRepository.delete()をhls=Trueで呼び出す
     Assert: RedisDaoのdelete()がHLS用キャッシュキーで呼び出されたことを確認
     """
     # Arrange
     video_id = VideoId(_value="dQw4w9WgXcQ")
 
     # Act
-    await repository.delete(video_id=video_id, use_hls=True)
+    await repository.delete(video_id=video_id, hls=True)
 
     # Assert
     mock_redis_dao.delete.assert_called_once_with(key="dQw4w9WgXcQ:hls:True")
