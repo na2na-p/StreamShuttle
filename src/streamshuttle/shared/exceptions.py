@@ -99,9 +99,9 @@ class InvalidUrlError(StreamShuttleError):
 
 class HlsNotSupportedError(StreamShuttleError):
     """
-    HLS形式が要求されたが、use_hls=falseで拒否された場合
+    HLS形式が要求されたが、hls=falseで拒否された場合
 
-    ニコニコ動画はHLS専用形式のため、use_hls=falseの場合に発生します。
+    ニコニコ動画はHLS専用形式のため、hls=falseの場合に発生します。
     """
 
     def __init__(self, message: str = "HLS形式がサポートされていません") -> None:

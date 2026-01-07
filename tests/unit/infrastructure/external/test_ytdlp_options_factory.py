@@ -122,7 +122,7 @@ class TestYtDlpOptionsFactory:
         assert options[key] == expected_value
 
     @pytest.mark.parametrize(
-        "format_spec, use_hls, expected_format",
+        "format_spec, hls, expected_format",
         [
             pytest.param(
                 "best[ext=mp4]",
@@ -139,19 +139,19 @@ class TestYtDlpOptionsFactory:
         ],
     )
     def test_create_url_resolution_options_sets_format_spec(
-        self, format_spec, use_hls, expected_format
+        self, format_spec, hls, expected_format
     ):
         """URL解決オプションにフォーマット仕様が正しく設定されることを確認"""
         # Act
         options = YtDlpOptionsFactory.create_url_resolution_options(
-            format_spec=format_spec, use_hls=use_hls
+            format_spec=format_spec, hls=hls
         )
 
         # Assert
         assert options["format"] == expected_format
 
     @pytest.mark.parametrize(
-        "format_spec, use_hls, expected_skip",
+        "format_spec, hls, expected_skip",
         [
             pytest.param(
                 "best",
@@ -168,12 +168,12 @@ class TestYtDlpOptionsFactory:
         ],
     )
     def test_create_url_resolution_options_configures_extractor_args_for_hls(
-        self, format_spec, use_hls, expected_skip
+        self, format_spec, hls, expected_skip
     ):
         """URL解決オプションのextractor_argsがHLSフラグに応じて設定されることを確認"""
         # Act
         options = YtDlpOptionsFactory.create_url_resolution_options(
-            format_spec=format_spec, use_hls=use_hls
+            format_spec=format_spec, hls=hls
         )
 
         # Assert

@@ -20,19 +20,19 @@ class StreamUrlRepository(Protocol):
     参照系UseCase向けのDTO取得はQueryServiceで行います。
     """
 
-    async def save(self, stream_url: StreamUrl, use_hls: bool = False) -> None:
+    async def save(self, stream_url: StreamUrl, hls: bool = False) -> None:
         """
         StreamUrlを保存します
 
         StreamUrl Aggregateをデータストア（Redis等）に永続化します。
         既に同じVideoIdのStreamUrlが存在する場合は上書きします。
 
-        use_hlsパラメータはキャッシュキーの一部として使用され、
-        同じvideo_idでもuse_hlsの値が異なれば別のエントリとして保存されます。
+        hlsパラメータはキャッシュキーの一部として使用され、
+        同じvideo_idでもhlsの値が異なれば別のエントリとして保存されます。
 
         Args:
             stream_url: 保存するStreamUrl Aggregate
-            use_hls: HLS形式の使用フラグ（デフォルト: False）
+            hls: HLS形式の使用フラグ（デフォルト: False）
 
         Raises:
             CacheException: データストアへの保存に失敗した場合
@@ -54,19 +54,19 @@ class StreamUrlRepository(Protocol):
         """
         ...
 
-    async def find_by_video_id(self, video_id: str, use_hls: bool = False) -> StreamUrl | None:
+    async def find_by_video_id(self, video_id: str, hls: bool = False) -> StreamUrl | None:
         """
         VideoIdに紐づくStreamUrlを取得します
 
         指定されたVideoIdに対応するStreamUrl Aggregateをデータストアから取得します。
         該当するStreamUrlが存在しない場合はNoneを返します。
 
-        use_hlsパラメータによってキャッシュキーが異なるため、同じvideo_idでも
-        use_hlsの値によって異なる結果が返される可能性があります。
+        hlsパラメータによってキャッシュキーが異なるため、同じvideo_idでも
+        hlsの値によって異なる結果が返される可能性があります。
 
         Args:
             video_id: YouTube動画ID（11桁の英数字）
-            use_hls: HLS形式の使用フラグ（デフォルト: False）
+            hls: HLS形式の使用フラグ（デフォルト: False）
 
         Returns:
             StreamUrl | None:

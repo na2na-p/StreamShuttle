@@ -41,7 +41,7 @@ class ResolveYoutubeUrlUseCase:
         self._youtube_resolver = youtube_resolver
 
     async def execute(
-        self, youtube_url: YoutubeUrl, format_id: str | None = None, use_hls: bool = False
+        self, youtube_url: YoutubeUrl, format_id: str | None = None, hls: bool = False
     ) -> str:
         """
         YouTube URLをストリームURLに解決します
@@ -49,7 +49,7 @@ class ResolveYoutubeUrlUseCase:
         Args:
             youtube_url: YouTube動画URL（YoutubeUrl ValueObject）
             format_id: フォーマットID（オプショナル）
-            use_hls: HLS形式の使用（デフォルト: False）
+            hls: HLS形式の使用（デフォルト: False）
 
         Returns:
             str: 解決済みの直接ストリームURL
@@ -63,18 +63,18 @@ class ResolveYoutubeUrlUseCase:
         """
         video_id = youtube_url.extract_video_id()
 
-        cached = await self._repository.find_by_video_id(str(video_id), use_hls)
+        cached = await self._repository.find_by_video_id(str(video_id), hls)
 
         if cached and not cached.is_expired():
             return cached.resolved_url.value
 
-        result = await self._youtube_resolver.resolve_url(str(youtube_url), format_id, use_hls)
+        result = await self._youtube_resolver.resolve_url(str(youtube_url), format_id, hls)
 
         stream_url = StreamUrl.create(
             video_id=str(video_id),
             resolved_url=result.resolved_url,
             ttl_seconds=result.ttl_seconds,
         )
-        await self._repository.save(stream_url, use_hls)
+        await self._repository.save(stream_url, hls)
 
         return result.resolved_url
