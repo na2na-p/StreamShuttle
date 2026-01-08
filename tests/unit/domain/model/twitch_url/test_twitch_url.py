@@ -9,13 +9,9 @@ from streamshuttle.shared.exceptions import InvalidUrlError, InvalidVideoIdError
 @pytest.mark.parametrize(
     "url",
     [
-        pytest.param(
-            "https://www.twitch.tv/videos/1234567890", id="正常系: VOD URL"
-        ),
+        pytest.param("https://www.twitch.tv/videos/1234567890", id="正常系: VOD URL"),
         pytest.param("https://twitch.tv/videos/1234567890", id="正常系: wwwなしVOD URL"),
-        pytest.param(
-            "https://m.twitch.tv/videos/1234567890", id="正常系: モバイル版VOD URL"
-        ),
+        pytest.param("https://m.twitch.tv/videos/1234567890", id="正常系: モバイル版VOD URL"),
         pytest.param("https://www.twitch.tv/channelname", id="正常系: ライブストリームURL"),
         pytest.param(
             "https://www.twitch.tv/channelname/clip/ClipSlug-abc123",

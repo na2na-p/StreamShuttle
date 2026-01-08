@@ -40,9 +40,7 @@ class ResolveTwitchUrlUseCase:
         self._repository = repository
         self._twitch_resolver = twitch_resolver
 
-    async def execute(
-        self, twitch_url: TwitchUrl, format_id: str | None = None
-    ) -> str:
+    async def execute(self, twitch_url: TwitchUrl, format_id: str | None = None) -> str:
         """
         Twitch URLをストリームURLに解決します
 

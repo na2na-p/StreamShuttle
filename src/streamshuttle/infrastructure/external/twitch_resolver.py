@@ -73,9 +73,7 @@ class TwitchResolver:
 
         return ResolvedUrlResultDto(resolved_url=resolved_url, ttl_seconds=ttl_seconds)
 
-    def _resolve_url_sync(
-        self, twitch_url: str, format_id: str | None = None
-    ) -> str:
+    def _resolve_url_sync(self, twitch_url: str, format_id: str | None = None) -> str:
         """
         yt-dlpを使用してTwitch URLを解決します（同期処理）
 
