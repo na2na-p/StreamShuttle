@@ -6,6 +6,7 @@ DIコンテナモジュール
 """
 
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
+from streamshuttle.infrastructure.external.twitch_resolver import TwitchResolver
 from streamshuttle.infrastructure.external.youtube_resolver import YoutubeResolver
 from streamshuttle.infrastructure.query_service.format_url_query_service import (
     FormatUrlQueryService,
@@ -29,6 +30,9 @@ from streamshuttle.infrastructure.repository.video_formats_repository import (
     VideoFormatsRepository,
 )
 from streamshuttle.shared.config import config
+from streamshuttle.usecase.command.resolve_twitch_url_usecase import (
+    ResolveTwitchUrlUseCase,
+)
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import (
     ResolveYoutubeUrlUseCase,
 )
@@ -227,4 +231,31 @@ def get_or_resolve_stream_url_use_case() -> GetOrResolveStreamUrlUseCase:
     return GetOrResolveStreamUrlUseCase(
         cached_url_use_case=get_cached_format_url_use_case(),
         resolve_use_case=get_resolve_youtube_url_use_case(),
+    )
+
+
+def get_twitch_resolver() -> TwitchResolver:
+    """
+    TwitchResolverインスタンスを生成
+
+    TwitchResolverは依存関係がないため、単純に新規インスタンスを生成します。
+
+    Returns:
+        TwitchResolver: 初期化済みのTwitchResolverインスタンス
+    """
+    return TwitchResolver()
+
+
+def get_resolve_twitch_url_use_case() -> ResolveTwitchUrlUseCase:
+    """
+    ResolveTwitchUrlUseCaseインスタンスを生成
+
+    必要な依存関係をすべて注入して生成します。
+
+    Returns:
+        ResolveTwitchUrlUseCase: 初期化済みのUseCaseインスタンス
+    """
+    return ResolveTwitchUrlUseCase(
+        repository=get_stream_url_repository(),
+        twitch_resolver=get_twitch_resolver(),
     )

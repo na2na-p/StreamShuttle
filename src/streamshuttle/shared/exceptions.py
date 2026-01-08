@@ -112,3 +112,21 @@ class HlsNotSupportedError(StreamShuttleError):
             message: エラーメッセージ（デフォルト: "HLS形式がサポートされていません"）
         """
         super().__init__(message)
+
+
+class TwitchResolverError(StreamShuttleError):
+    """
+    Twitch URL解決エラー例外クラス
+
+    Twitch URLからストリームURLを解決する際に発生するエラーを表現します。
+    yt-dlpによる解決失敗、無効なURL、アクセス権限エラーなどが該当します。
+    """
+
+    def __init__(self, message: str = "Twitch URLの解決に失敗しました") -> None:
+        """
+        Twitch URL解決エラーを初期化します
+
+        Args:
+            message: エラーメッセージ（デフォルト: "Twitch URLの解決に失敗しました"）
+        """
+        super().__init__(message)

@@ -84,3 +84,35 @@ class YtDlpOptionsFactory:
             options["extractor_args"]["youtube"]["skip"] = ["dash"]
 
         return options
+
+    @staticmethod
+    def create_twitch_options(format_spec: str) -> dict:
+        """Twitch用オプションを生成
+
+        TwitchはHLS形式のみをサポートするため、HLS対応の設定を行う。
+
+        Args:
+            format_spec: yt-dlpのフォーマット指定文字列
+
+        Returns:
+            dict: yt-dlpオプション辞書
+        """
+        options = {
+            "quiet": True,
+            "no_warnings": True,
+            "nocheckcertificate": False,
+            "no_color": True,
+            "no_call_home": True,
+            "socket_timeout": 30,
+            "noplaylist": True,
+            "http_headers": {
+                "User-Agent": f"StreamShuttle/{config.app_version}",
+            },
+            "format": format_spec,
+            "skip_download": True,
+            "no_get_comments": True,
+            "writesubtitles": False,
+            "writethumbnail": False,
+        }
+
+        return options
