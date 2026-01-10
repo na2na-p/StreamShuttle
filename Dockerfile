@@ -32,6 +32,9 @@ COPY . .
 RUN --mount=type=cache,target=/root/.cache/uv \
         uv sync --frozen --no-dev --no-editable
 
+# uvがPythonを管理しない場合でもディレクトリを確保（productionステージのCOPY用）
+RUN mkdir -p /root/.local/share/uv
+
 FROM base AS development
 
 RUN useradd -m -u 1000 appuser
