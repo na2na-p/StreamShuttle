@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from streamshuttle.domain.model.stream_url.stream_url import StreamUrl
-from streamshuttle.domain.model.stream_url.video_id import VideoId
+from streamshuttle.domain.model.stream_url.youtube_video_id import YouTubeVideoId
 from streamshuttle.infrastructure.repository.stream_url_repository import StreamUrlRepository
 from streamshuttle.shared.exceptions import CacheError
 
@@ -59,8 +59,8 @@ async def test_stream_url_repository_save_calls_redis_dao_set(repository, mock_r
     # Assert
     mock_redis_dao.set.assert_called_once()
     call_args = mock_redis_dao.set.call_args
-    # hls=Falseがデフォルトなので、キャッシュキーに含まれる
-    assert call_args.kwargs["key"] == "dQw4w9WgXcQ:hls:False"
+    # hls=Falseがデフォルト、platform="youtube"がデフォルトなので、キャッシュキーに含まれる
+    assert call_args.kwargs["key"] == "youtube:dQw4w9WgXcQ:hls:False"
     assert call_args.kwargs["value"] == "https://example.com/video.m3u8"
     assert call_args.kwargs["ttl"] > 0
 
@@ -96,13 +96,13 @@ async def test_stream_url_repository_delete_calls_redis_dao_delete(repository, m
     Assert: RedisDaoのdelete()が正しいキーで呼び出されたことを確認
     """
     # Arrange
-    video_id = VideoId(_value="dQw4w9WgXcQ")
+    video_id = YouTubeVideoId(_value="dQw4w9WgXcQ")
 
     # Act
     await repository.delete(video_id=video_id)
 
     # Assert
-    mock_redis_dao.delete.assert_called_once_with(key="dQw4w9WgXcQ:hls:False")
+    mock_redis_dao.delete.assert_called_once_with(key="youtube:dQw4w9WgXcQ:hls:False")
 
 
 async def test_stream_url_repository_delete_with_hls_true(repository, mock_redis_dao):
@@ -114,13 +114,13 @@ async def test_stream_url_repository_delete_with_hls_true(repository, mock_redis
     Assert: RedisDaoのdelete()がHLS用キャッシュキーで呼び出されたことを確認
     """
     # Arrange
-    video_id = VideoId(_value="dQw4w9WgXcQ")
+    video_id = YouTubeVideoId(_value="dQw4w9WgXcQ")
 
     # Act
     await repository.delete(video_id=video_id, hls=True)
 
     # Assert
-    mock_redis_dao.delete.assert_called_once_with(key="dQw4w9WgXcQ:hls:True")
+    mock_redis_dao.delete.assert_called_once_with(key="youtube:dQw4w9WgXcQ:hls:True")
 
 
 async def test_stream_url_repository_delete_raises_cache_exception_on_redis_error(
@@ -135,7 +135,7 @@ async def test_stream_url_repository_delete_raises_cache_exception_on_redis_erro
     Assert: CacheErrorが発生することを確認
     """
     # Arrange
-    video_id = VideoId(_value="dQw4w9WgXcQ")
+    video_id = YouTubeVideoId(_value="dQw4w9WgXcQ")
     mock_redis_dao.delete.side_effect = CacheError("Redis error")
 
     # Act & Assert

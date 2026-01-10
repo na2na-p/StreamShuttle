@@ -7,7 +7,7 @@ VideoFormatsRepository Protocolの実装クラスを定義します。
 from streamshuttle.domain.model.cache_key.video_formats_cache_key import (
     VideoFormatsCacheKey,
 )
-from streamshuttle.domain.model.stream_url.video_id import VideoId
+from streamshuttle.domain.model.stream_url.youtube_video_id import YouTubeVideoId
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.shared.config import config
 from streamshuttle.usecase.dto.video_formats_dto import VideoFormatsDto
@@ -53,7 +53,7 @@ class VideoFormatsRepository:
             これにより、キャッシュ障害がサービス全体に影響しないようにします。
         """
         try:
-            cache_key = VideoFormatsCacheKey(_video_id=VideoId(_value=video_id))
+            cache_key = VideoFormatsCacheKey(_video_id=YouTubeVideoId(_value=video_id))
             json_data = video_formats.model_dump_json()
 
             await self._redis_dao.set(

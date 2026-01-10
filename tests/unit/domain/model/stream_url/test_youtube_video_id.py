@@ -6,7 +6,7 @@ VideoId ValueObjectの正常系と異常系のテストを提供します。
 
 import pytest
 
-from streamshuttle.domain.model.stream_url.video_id import VideoId
+from streamshuttle.domain.model.stream_url.youtube_video_id import YouTubeVideoId
 from streamshuttle.shared.exceptions import InvalidVideoIdError
 
 
@@ -22,7 +22,7 @@ def test_video_id_creation_with_valid_id():
     valid_id = "dQw4w9WgXcQ"
 
     # Act
-    video_id = VideoId(_value=valid_id)
+    video_id = YouTubeVideoId(_value=valid_id)
 
     # Assert
     assert video_id.value == valid_id
@@ -42,7 +42,7 @@ def test_video_id_with_hyphen_and_underscore():
     valid_id = "abc-123_XYZ"
 
     # Act
-    video_id = VideoId(_value=valid_id)
+    video_id = YouTubeVideoId(_value=valid_id)
 
     # Assert
     assert video_id.value == valid_id
@@ -60,7 +60,7 @@ def test_video_id_raises_exception_for_empty_string():
 
     # Act & Assert
     with pytest.raises(InvalidVideoIdError) as exc_info:
-        VideoId(_value=empty_id)
+        YouTubeVideoId(_value=empty_id)
 
     assert "ビデオIDが空です" in str(exc_info.value)
 
@@ -77,7 +77,7 @@ def test_video_id_raises_exception_for_short_id():
 
     # Act & Assert
     with pytest.raises(InvalidVideoIdError) as exc_info:
-        VideoId(_value=short_id)
+        YouTubeVideoId(_value=short_id)
 
     assert "11文字である必要があります" in str(exc_info.value)
 
@@ -94,7 +94,7 @@ def test_video_id_raises_exception_for_long_id():
 
     # Act & Assert
     with pytest.raises(InvalidVideoIdError) as exc_info:
-        VideoId(_value=long_id)
+        YouTubeVideoId(_value=long_id)
 
     assert "11文字である必要があります" in str(exc_info.value)
 
@@ -115,7 +115,7 @@ def test_video_id_raises_exception_for_invalid_characters():
 
     # Act & Assert
     with pytest.raises(InvalidVideoIdError) as exc_info:
-        VideoId(_value=invalid_id)
+        YouTubeVideoId(_value=invalid_id)
 
     assert "ビデオIDの形式が不正です" in str(exc_info.value)
 
@@ -133,7 +133,7 @@ def test_video_id_raises_exception_for_space():
 
     # Act & Assert
     with pytest.raises(InvalidVideoIdError) as exc_info:
-        VideoId(_value=invalid_id)
+        YouTubeVideoId(_value=invalid_id)
 
     assert "ビデオIDの形式が不正です" in str(exc_info.value)
 
@@ -151,7 +151,7 @@ def test_video_id_immutability():
     """
     # Arrange
     valid_id = "dQw4w9WgXcQ"
-    video_id = VideoId(_value=valid_id)
+    video_id = YouTubeVideoId(_value=valid_id)
 
     # Act & Assert
     with pytest.raises(Exception):  # FrozenInstanceErrorまたはAttributeError
@@ -170,8 +170,8 @@ def test_video_id_equality():
     """
     # Arrange
     valid_id = "dQw4w9WgXcQ"
-    video_id_1 = VideoId(_value=valid_id)
-    video_id_2 = VideoId(_value=valid_id)
+    video_id_1 = YouTubeVideoId(_value=valid_id)
+    video_id_2 = YouTubeVideoId(_value=valid_id)
 
     # Act & Assert
     assert video_id_1 == video_id_2
@@ -186,8 +186,8 @@ def test_video_id_inequality():
     Assert: 等価でないことを確認
     """
     # Arrange
-    video_id_1 = VideoId(_value="dQw4w9WgXcQ")
-    video_id_2 = VideoId(_value="abcdefghijk")
+    video_id_1 = YouTubeVideoId(_value="dQw4w9WgXcQ")
+    video_id_2 = YouTubeVideoId(_value="abcdefghijk")
 
     # Act & Assert
     assert video_id_1 != video_id_2
@@ -203,7 +203,7 @@ def test_video_id_str():
     """
     # Arrange
     valid_id = "dQw4w9WgXcQ"
-    video_id = VideoId(_value=valid_id)
+    video_id = YouTubeVideoId(_value=valid_id)
 
     # Act
     result = str(video_id)

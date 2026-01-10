@@ -60,7 +60,7 @@ class ResolveTwitchUrlUseCase:
         video_id = twitch_url.extract_video_id()
 
         # TwitchはHLS形式のみなので、hls=Trueとしてキャッシュを検索
-        cached = await self._repository.find_by_video_id(str(video_id), hls=True)
+        cached = await self._repository.find_by_video_id(str(video_id), hls=True, platform="twitch")
 
         if cached and not cached.is_expired():
             return cached.resolved_url.value
@@ -71,7 +71,8 @@ class ResolveTwitchUrlUseCase:
             video_id=str(video_id),
             resolved_url=result.resolved_url,
             ttl_seconds=result.ttl_seconds,
+            platform="twitch",
         )
-        await self._repository.save(stream_url, hls=True)
+        await self._repository.save(stream_url, hls=True, platform="twitch")
 
         return result.resolved_url
