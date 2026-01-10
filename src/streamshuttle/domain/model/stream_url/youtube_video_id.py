@@ -11,7 +11,7 @@ from streamshuttle.shared.exceptions import InvalidVideoIdError
 
 
 @dataclass(frozen=True)
-class VideoId:
+class YouTubeVideoId:
     """
     YouTubeビデオIDを表現するValueObject
 

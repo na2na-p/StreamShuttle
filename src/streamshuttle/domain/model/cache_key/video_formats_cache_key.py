@@ -6,7 +6,7 @@ Video Formatsのキャッシュキーを表現するValueObjectを定義しま�
 
 from dataclasses import dataclass
 
-from streamshuttle.domain.model.stream_url.video_id import VideoId
+from streamshuttle.domain.model.stream_url.youtube_video_id import YouTubeVideoId
 
 
 @dataclass(frozen=True)
@@ -21,7 +21,7 @@ class VideoFormatsCacheKey:
         _video_id: YouTube動画ID
     """
 
-    _video_id: VideoId
+    _video_id: YouTubeVideoId
 
     @property
     def value(self) -> str:

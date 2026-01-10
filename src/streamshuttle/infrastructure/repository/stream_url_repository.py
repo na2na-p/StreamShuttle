@@ -5,7 +5,8 @@ Domain層で定義されたStreamUrlRepositoryインターフェースの実装�
 """
 
 from streamshuttle.domain.model.cache_key.stream_url_cache_key import StreamUrlCacheKey
-from streamshuttle.domain.model.stream_url import StreamUrl, VideoId
+from streamshuttle.domain.model.stream_url import StreamUrl, YouTubeVideoId
+from streamshuttle.domain.model.twitch_url import TwitchVideoId
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.shared.config import config
 
@@ -33,30 +34,42 @@ class StreamUrlRepository:
         """
         self._redis_dao = redis_dao
 
-    async def save(self, stream_url: StreamUrl, hls: bool = False) -> None:
+    async def save(
+        self, stream_url: StreamUrl, hls: bool = False, platform: str = "youtube"
+    ) -> None:
         """
         StreamUrlを保存します
 
         StreamUrl AggregateをRedisに永続化します。
         既に同じVideoIdのStreamUrlが存在する場合は上書きします。
 
-        Redisキーは「video_id:hls:{hls}」形式で、hlsの値によって
-        異なるキャッシュエントリとして保存されます。
+        Redisキーは「{platform}:{video_id}:hls:{hls}」形式で、
+        プラットフォームとhlsの値によって異なるキャッシュエントリとして保存されます。
 
         Args:
             stream_url: 保存するStreamUrl Aggregate
             hls: HLS形式の使用フラグ（デフォルト: False）
+            platform: プラットフォーム識別子（デフォルト: "youtube"）
 
         Raises:
             CacheException: Redisへの保存に失敗した場合
         """
-        cache_key = StreamUrlCacheKey(_video_id=stream_url.video_id, _hls=hls)
+        cache_key = StreamUrlCacheKey(
+            _platform=platform,
+            _video_id_value=stream_url.video_id.value,
+            _hls=hls,
+        )
         value = stream_url.resolved_url.value
         ttl = stream_url.cache_expiry.ttl_seconds()
 
         await self._redis_dao.set(key=cache_key.value, value=value, ttl=ttl)
 
-    async def delete(self, video_id: VideoId, hls: bool = False) -> None:
+    async def delete(
+        self,
+        video_id: YouTubeVideoId | TwitchVideoId,
+        hls: bool = False,
+        platform: str = "youtube",
+    ) -> None:
         """
         VideoIdに紐づくStreamUrlを削除します
 
@@ -64,38 +77,56 @@ class StreamUrlRepository:
         該当するStreamUrlが存在しない場合でもエラーとしません。
 
         Args:
-            video_id: 削除対象のVideoId
+            video_id: 削除対象のVideoId（YouTubeVideoIdまたはTwitchVideoId）
             hls: HLS形式の使用フラグ（デフォルト: False）
+            platform: プラットフォーム識別子（デフォルト: "youtube"）
 
         Raises:
             CacheException: Redisからの削除に失敗した場合
         """
-        cache_key = StreamUrlCacheKey(_video_id=video_id, _hls=hls)
+        cache_key = StreamUrlCacheKey(
+            _platform=platform,
+            _video_id_value=video_id.value,
+            _hls=hls,
+        )
         await self._redis_dao.delete(key=cache_key.value)
 
-    async def find_by_video_id(self, video_id: str, hls: bool = False) -> StreamUrl | None:
+    async def find_by_video_id(
+        self, video_id: str, hls: bool = False, platform: str = "youtube"
+    ) -> StreamUrl | None:
         """
         VideoIdに紐づくStreamUrlを取得します
 
         指定されたVideoIdに対応するStreamUrl Aggregateをデータストアから取得します。
         該当するStreamUrlが存在しない場合はNoneを返します。
 
-        Redisキーは「video_id:hls:{hls}」形式で、hlsの値によって
-        異なるキャッシュエントリを参照します。
+        Redisキーは「{platform}:{video_id}:hls:{hls}」形式で、
+        プラットフォームとhlsの値によって異なるキャッシュエントリを参照します。
 
         Args:
-            video_id: YouTube動画ID（11桁の英数字）
+            video_id: 動画ID（YouTubeは11桁、Twitchは可変長）
             hls: HLS形式の使用フラグ（デフォルト: False）
+            platform: プラットフォーム識別子（デフォルト: "youtube"）
 
         Returns:
             StreamUrl | None:
                 キャッシュが存在する場合はStreamUrl Aggregate、存在しない場合はNone
 
         Raises:
+            InvalidVideoIdError: ビデオIDの形式が不正な場合
             CacheException: Redisからの取得に失敗した場合
         """
-        video_id_vo = VideoId(_value=video_id)
-        cache_key = StreamUrlCacheKey(_video_id=video_id_vo, _hls=hls)
+        # プラットフォームに応じたValue Objectで検証
+        if platform == "youtube":
+            YouTubeVideoId(_value=video_id)
+        else:
+            TwitchVideoId(_value=video_id)
+
+        cache_key = StreamUrlCacheKey(
+            _platform=platform,
+            _video_id_value=video_id,
+            _hls=hls,
+        )
 
         cached_url = await self._redis_dao.get(key=cache_key.value)
 
@@ -110,4 +141,5 @@ class StreamUrlRepository:
             video_id=video_id,
             resolved_url=cached_url,
             ttl_seconds=ttl,
+            platform=platform,
         )
