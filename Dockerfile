@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.14.1-slim AS base
+FROM python:3.14.2-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
         PYTHONDONTWRITEBYTECODE=1 \
@@ -31,6 +31,9 @@ COPY . .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
         uv sync --frozen --no-dev --no-editable
+
+# uvがPythonを管理しない場合でもディレクトリを確保（productionステージのCOPY用）
+RUN mkdir -p /root/.local/share/uv
 
 FROM base AS development
 
