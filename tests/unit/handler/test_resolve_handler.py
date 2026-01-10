@@ -11,15 +11,21 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from streamshuttle.di.container import get_resolve_youtube_url_use_case
+from streamshuttle.di.container import (
+    get_resolve_twitch_url_use_case,
+    get_resolve_youtube_url_use_case,
+)
+from streamshuttle.domain.model.twitch_url.twitch_url import TwitchUrl
 from streamshuttle.domain.model.youtube_url.youtube_url import YoutubeUrl
 from streamshuttle.handler.resolve_handler import router
 from streamshuttle.shared.exceptions import (
     HlsNotSupportedError,
     InvalidUrlError,
     InvalidVideoIdError,
+    TwitchResolverError,
     YouTubeResolverError,
 )
+from streamshuttle.usecase.command.resolve_twitch_url_usecase import ResolveTwitchUrlUseCase
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import ResolveYoutubeUrlUseCase
 
 
@@ -31,8 +37,12 @@ def app():
     Returns:
         FastAPI: ResolveHandlerのルーターを含むFastAPIアプリケーション
     """
+    from streamshuttle.shared.rate_limiter import limiter
+
     app = FastAPI()
+    app.state.limiter = limiter
     app.include_router(router)
+    limiter.enabled = False
     return app
 
 
@@ -48,7 +58,18 @@ def mock_use_case():
 
 
 @pytest.fixture
-def client(app, mock_use_case):
+def mock_twitch_use_case():
+    """
+    モックされたResolveTwitchUrlUseCaseを作成します
+
+    Returns:
+        AsyncMock: ResolveTwitchUrlUseCaseのモック
+    """
+    return AsyncMock(spec=ResolveTwitchUrlUseCase)
+
+
+@pytest.fixture
+def client(app, mock_use_case, mock_twitch_use_case):
     """
     テスト用クライアントを作成します
 
@@ -56,12 +77,14 @@ def client(app, mock_use_case):
 
     Args:
         app: FastAPIアプリケーション
-        mock_use_case: モックされたUseCase
+        mock_use_case: モックされたYouTube UseCase
+        mock_twitch_use_case: モックされたTwitch UseCase
 
     Returns:
         TestClient: FastAPI TestClient
     """
     app.dependency_overrides[get_resolve_youtube_url_use_case] = lambda: mock_use_case
+    app.dependency_overrides[get_resolve_twitch_url_use_case] = lambda: mock_twitch_use_case
     return TestClient(app)
 
 
@@ -263,3 +286,66 @@ def test_resolve_url_with_hls_not_supported_error(client, mock_use_case):
     assert response.status_code == 400
     assert "HLS support" in response.json()["detail"]
     assert "hls=true" in response.json()["detail"]
+
+
+def test_resolve_twitch_url_success(client, mock_twitch_use_case):
+    """
+    正常系: Twitch URLの解決が成功し、307リダイレクトが返されることを検証します
+
+    UseCaseが正常に解決されたURLを返す場合、
+    エンドポイントは307 Temporary Redirectを返し、
+    Locationヘッダーに解決済みURLが設定されることを確認します。
+    """
+    # Arrange
+    twitch_url = "https://www.twitch.tv/ninja"
+    resolved_url = "https://video-weaver.example.hls.ttvnw.net/v1/playlist/..."
+    mock_twitch_use_case.execute.return_value = resolved_url
+
+    # Act
+    response = client.get(f"/resolve?url={twitch_url}", follow_redirects=False)
+
+    # Assert
+    assert response.status_code == 307
+    assert response.headers["location"] == resolved_url
+    mock_twitch_use_case.execute.assert_called_once_with(TwitchUrl(_value=twitch_url))
+
+
+def test_resolve_twitch_url_with_resolver_error(client, mock_twitch_use_case):
+    """
+    異常系: Twitch解決エラーの場合、502 Bad Gatewayが返されることを検証します
+
+    UseCaseがTwitchResolverErrorを投げる場合、
+    エンドポイントは502 Bad Gatewayを返し、
+    エラーメッセージが含まれることを確認します。
+    """
+    # Arrange
+    twitch_url = "https://www.twitch.tv/ninja"
+    mock_twitch_use_case.execute.side_effect = TwitchResolverError(
+        "Twitch APIへのアクセスに失敗しました"
+    )
+
+    # Act
+    response = client.get(f"/resolve?url={twitch_url}")
+
+    # Assert
+    assert response.status_code == 502
+    assert "Failed to resolve URL" in response.json()["detail"]
+
+
+def test_resolve_url_with_unsupported_domain(client):
+    """
+    異常系: サポートされていないドメインの場合、400 Bad Requestが返されることを検証します
+
+    YouTube/Twitch以外のドメインが指定された場合、
+    エンドポイントは400 Bad Requestを返し、
+    エラーメッセージが含まれることを確認します。
+    """
+    # Arrange
+    unsupported_url = "https://vimeo.com/123456789"
+
+    # Act
+    response = client.get(f"/resolve?url={unsupported_url}")
+
+    # Assert
+    assert response.status_code == 400
+    assert "Invalid URL" in response.json()["detail"]
