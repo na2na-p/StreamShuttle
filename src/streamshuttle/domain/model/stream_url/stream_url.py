@@ -9,7 +9,8 @@ from datetime import UTC, datetime, timedelta
 
 from streamshuttle.domain.model.stream_url.cache_expiry import CacheExpiry
 from streamshuttle.domain.model.stream_url.resolved_url import ResolvedUrl
-from streamshuttle.domain.model.stream_url.video_id import VideoId
+from streamshuttle.domain.model.stream_url.youtube_video_id import YouTubeVideoId
+from streamshuttle.domain.model.twitch_url.twitch_video_id import TwitchVideoId
 
 
 @dataclass(frozen=True)
@@ -17,34 +18,35 @@ class StreamUrl:
     """
     StreamUrl Aggregate
 
-    YouTubeビデオIDから解決されたストリームURLとそのキャッシュ情報を管理します。
+    ビデオIDから解決されたストリームURLとそのキャッシュ情報を管理します。
+    YouTube、Twitch等のプラットフォームに対応します。
     このAggregateは不変であり、キャッシュの有効性判定機能を提供します。
 
     Aggregateルートとして、VideoId、ResolvedUrl、CacheExpiryの各ValueObjectを
     集約し、一貫性のある境界を形成します。
 
     ID設計:
-        このAggregateのIDは _video_id (VideoId型) です。
+        このAggregateのIDは _video_id (YouTubeVideoId | TwitchVideoId型) です。
         frozen=True により、ID（_video_id）の不変性が保証されています。
         同一のビデオIDに対するストリームURLは一意に識別されます。
 
     Attributes:
-        _video_id: YouTubeビデオID（このAggregateの識別子）
+        _video_id: ビデオID（このAggregateの識別子）
         _resolved_url: 解決済みストリームURL
         _cache_expiry: キャッシュ有効期限
     """
 
-    _video_id: VideoId
+    _video_id: YouTubeVideoId | TwitchVideoId
     _resolved_url: ResolvedUrl
     _cache_expiry: CacheExpiry
 
     @property
-    def video_id(self) -> VideoId:
+    def video_id(self) -> YouTubeVideoId | TwitchVideoId:
         """
-        YouTubeビデオIDを取得します
+        ビデオIDを取得します
 
         Returns:
-            VideoId: YouTubeビデオID
+            YouTubeVideoId | TwitchVideoId: ビデオID
         """
         return self._video_id
 
@@ -80,7 +82,12 @@ class StreamUrl:
         return self._cache_expiry.is_expired()
 
     @staticmethod
-    def create(video_id: str, resolved_url: str, ttl_seconds: int) -> "StreamUrl":
+    def create(
+        video_id: str,
+        resolved_url: str,
+        ttl_seconds: int,
+        platform: str = "youtube",
+    ) -> "StreamUrl":
         """
         新しいStreamUrlを生成します
 
@@ -89,19 +96,24 @@ class StreamUrl:
         有効期限計算）をカプセル化します。
 
         Args:
-            video_id: YouTubeビデオID（11桁の英数字）
+            video_id: ビデオID（YouTubeは11桁、Twitchは可変長）
             resolved_url: 解決済みストリームURL（HTTP/HTTPSスキーム）
             ttl_seconds: キャッシュTTL（秒）
+            platform: プラットフォーム識別子（デフォルト: "youtube"）
 
         Returns:
             StreamUrl: 生成されたStreamUrl Aggregate
 
         Raises:
-            InvalidVideoIdException: video_idが不正な場合（11桁でない、不正な文字等）
+            InvalidVideoIdException: video_idが不正な場合
             InvalidUrlException: resolved_urlが不正な場合（スキーム不正、ホスト不在等）
             ValueError: ttl_secondsが0以下の場合
         """
-        video_id_vo = VideoId(_value=video_id)
+        if platform == "youtube":
+            video_id_vo: YouTubeVideoId | TwitchVideoId = YouTubeVideoId(_value=video_id)
+        else:
+            video_id_vo = TwitchVideoId(_value=video_id)
+
         resolved_url_vo = ResolvedUrl(_value=resolved_url)
         expiry_at = datetime.now(UTC) + timedelta(seconds=ttl_seconds)
         cache_expiry = CacheExpiry(_expiry_at=expiry_at)

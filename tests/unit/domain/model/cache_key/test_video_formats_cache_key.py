@@ -7,7 +7,7 @@ import pytest
 from streamshuttle.domain.model.cache_key.video_formats_cache_key import (
     VideoFormatsCacheKey,
 )
-from streamshuttle.domain.model.stream_url.video_id import VideoId
+from streamshuttle.domain.model.stream_url.youtube_video_id import YouTubeVideoId
 
 
 class TestVideoFormatsCacheKey:
@@ -32,14 +32,14 @@ class TestVideoFormatsCacheKey:
         self, video_id_value: str, expected_key: str
     ) -> None:
         """valueプロパティが正しいキャッシュキー文字列を返すことを検証"""
-        video_id = VideoId(_value=video_id_value)
+        video_id = YouTubeVideoId(_value=video_id_value)
         cache_key = VideoFormatsCacheKey(_video_id=video_id)
 
         assert cache_key.value == expected_key
 
     def test_str_returns_cache_key_value(self) -> None:
         """__str__がvalueと同じ文字列を返すことを検証"""
-        video_id = VideoId(_value="dQw4w9WgXcQ")
+        video_id = YouTubeVideoId(_value="dQw4w9WgXcQ")
         cache_key = VideoFormatsCacheKey(_video_id=video_id)
 
         assert str(cache_key) == cache_key.value
@@ -47,16 +47,16 @@ class TestVideoFormatsCacheKey:
 
     def test_immutability(self) -> None:
         """VideoFormatsCacheKeyがイミュータブルであることを検証"""
-        video_id = VideoId(_value="dQw4w9WgXcQ")
+        video_id = YouTubeVideoId(_value="dQw4w9WgXcQ")
         cache_key = VideoFormatsCacheKey(_video_id=video_id)
 
         with pytest.raises(AttributeError):
-            cache_key._video_id = VideoId(_value="abc_def-123")  # type: ignore
+            cache_key._video_id = YouTubeVideoId(_value="abc_def-123")  # type: ignore
 
     def test_equality_same_values(self) -> None:
         """同じ値を持つVideoFormatsCacheKeyが等しいことを検証"""
-        video_id1 = VideoId(_value="dQw4w9WgXcQ")
-        video_id2 = VideoId(_value="dQw4w9WgXcQ")
+        video_id1 = YouTubeVideoId(_value="dQw4w9WgXcQ")
+        video_id2 = YouTubeVideoId(_value="dQw4w9WgXcQ")
         cache_key1 = VideoFormatsCacheKey(_video_id=video_id1)
         cache_key2 = VideoFormatsCacheKey(_video_id=video_id2)
 
@@ -64,8 +64,8 @@ class TestVideoFormatsCacheKey:
 
     def test_equality_different_video_id(self) -> None:
         """video_idが異なる場合にVideoFormatsCacheKeyが異なることを検証"""
-        video_id1 = VideoId(_value="dQw4w9WgXcQ")
-        video_id2 = VideoId(_value="abc_def-123")
+        video_id1 = YouTubeVideoId(_value="dQw4w9WgXcQ")
+        video_id2 = YouTubeVideoId(_value="abc_def-123")
         cache_key1 = VideoFormatsCacheKey(_video_id=video_id1)
         cache_key2 = VideoFormatsCacheKey(_video_id=video_id2)
 

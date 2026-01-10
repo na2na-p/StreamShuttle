@@ -7,7 +7,8 @@ UseCase層で定義されたStreamUrlQueryServiceインターフェースの実�
 from datetime import UTC, datetime, timedelta
 
 from streamshuttle.domain.model.cache_key.stream_url_cache_key import StreamUrlCacheKey
-from streamshuttle.domain.model.stream_url.video_id import VideoId
+from streamshuttle.domain.model.stream_url.youtube_video_id import YouTubeVideoId
+from streamshuttle.domain.model.twitch_url.twitch_video_id import TwitchVideoId
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.shared.config import config
 from streamshuttle.usecase.dto.stream_url_dto import StreamUrlDto
@@ -40,28 +41,42 @@ class StreamUrlQueryService:
         """
         self._redis_dao = redis_dao
 
-    async def find_by_video_id(self, video_id: str, hls: bool = False) -> StreamUrlDto | None:
+    async def find_by_video_id(
+        self, video_id: str, hls: bool = False, platform: str = "youtube"
+    ) -> StreamUrlDto | None:
         """
-        YouTube動画IDでストリームURL情報を取得します
+        動画IDでストリームURL情報を取得します
 
         Redisキャッシュから指定された動画IDに対応するストリームURL情報を取得します。
         キャッシュに存在しない場合はNoneを返します。
 
-        Redisキーは「video_id:hls:{hls}」形式で、hlsの値によって
-        異なるキャッシュエントリを参照します。
+        Redisキーは「{platform}:{video_id}:hls:{hls}」形式で、
+        プラットフォームとhlsの値によって異なるキャッシュエントリを参照します。
 
         Args:
-            video_id: YouTube動画ID（11桁の英数字）
+            video_id: 動画ID（YouTubeは11桁、Twitchは可変長）
             hls: HLS形式の使用フラグ（デフォルト: False）
+            platform: プラットフォーム識別子（デフォルト: "youtube"）
 
         Returns:
             StreamUrlDto | None:
                 キャッシュが存在する場合はStreamUrlDto、存在しない場合はNone
 
         Raises:
+            InvalidVideoIdError: ビデオIDの形式が不正な場合
             CacheException: キャッシュ操作に失敗した場合
         """
-        cache_key = StreamUrlCacheKey(_video_id=VideoId(_value=video_id), _hls=hls)
+        # プラットフォームに応じたValue Objectで検証
+        if platform == "youtube":
+            YouTubeVideoId(_value=video_id)
+        else:
+            TwitchVideoId(_value=video_id)
+
+        cache_key = StreamUrlCacheKey(
+            _platform=platform,
+            _video_id_value=video_id,
+            _hls=hls,
+        )
 
         cached_url = await self._redis_dao.get(key=cache_key.value)
 

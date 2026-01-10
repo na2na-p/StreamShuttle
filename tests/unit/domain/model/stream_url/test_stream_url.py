@@ -134,9 +134,9 @@ def test_stream_url_immutability():
 
     # Act & Assert
     with pytest.raises(Exception):  # FrozenInstanceErrorまたはAttributeError
-        from streamshuttle.domain.model.stream_url.video_id import VideoId
+        from streamshuttle.domain.model.stream_url.youtube_video_id import YouTubeVideoId
 
-        stream_url._video_id = VideoId(_value="abcdefghijk")  # noqa: F841
+        stream_url._video_id = YouTubeVideoId(_value="abcdefghijk")  # noqa: F841
 
 
 def test_stream_url_equality():
@@ -172,3 +172,77 @@ def test_stream_url_equality():
     # video_idとresolved_urlが同じであることを確認
     assert stream_url_1.video_id == stream_url_2.video_id
     assert stream_url_1.resolved_url == stream_url_2.resolved_url
+
+
+def test_stream_url_create_with_twitch_platform():
+    """
+    正常系: Twitchプラットフォームで可変長ビデオIDのStreamUrlを生成できることを確認
+
+    Arrange: 有効なTwitchチャンネル名（14文字）、URL、TTL、platform="twitch"を準備
+    Act: StreamUrl.create()でStreamUrlを生成
+    Assert: 各プロパティで値が取得できることを確認
+    """
+    # Arrange
+    video_id = "gamesdonequick"  # 14文字のTwitchチャンネル名
+    resolved_url = "https://example.com/video.m3u8"
+    ttl_seconds = 3600
+
+    # Act
+    stream_url = StreamUrl.create(
+        video_id=video_id,
+        resolved_url=resolved_url,
+        ttl_seconds=ttl_seconds,
+        platform="twitch",
+    )
+
+    # Assert
+    assert stream_url.video_id.value == video_id
+    assert stream_url.resolved_url.value == resolved_url
+    assert stream_url.cache_expiry.ttl_seconds() > 0
+
+
+def test_stream_url_create_with_short_twitch_channel():
+    """
+    正常系: 短いTwitchチャンネル名（4文字）でStreamUrlを生成できることを確認
+
+    Arrange: 4文字のTwitchチャンネル名を準備
+    Act: StreamUrl.create()でStreamUrlを生成
+    Assert: 正常に生成されることを確認
+    """
+    # Arrange
+    video_id = "riot"  # 4文字
+    resolved_url = "https://example.com/video.m3u8"
+    ttl_seconds = 3600
+
+    # Act
+    stream_url = StreamUrl.create(
+        video_id=video_id,
+        resolved_url=resolved_url,
+        ttl_seconds=ttl_seconds,
+        platform="twitch",
+    )
+
+    # Assert
+    assert stream_url.video_id.value == video_id
+
+
+def test_stream_url_create_twitch_raises_for_invalid_id():
+    """
+    異常系: 空のTwitch IDでStreamUrlを生成するとInvalidVideoIdErrorが発生することを確認
+
+    Arrange: 空文字列を準備
+    Act & Assert: StreamUrl.create()時にInvalidVideoIdErrorが発生することを確認
+    """
+    # Arrange
+    invalid_video_id = ""
+    resolved_url = "https://example.com/video.m3u8"
+    ttl_seconds = 3600
+
+    # Act & Assert
+    with pytest.raises(InvalidVideoIdError):
+        StreamUrl.create(
+            video_id=invalid_video_id,
+            resolved_url=resolved_url,
+            ttl_seconds=ttl_seconds,
+            platform="twitch",
+        )

@@ -6,7 +6,7 @@ StreamUrl Aggregateの永続化を担当するRepositoryインターフェース
 
 from typing import Protocol
 
-from streamshuttle.domain.model.stream_url import StreamUrl, VideoId
+from streamshuttle.domain.model.stream_url import StreamUrl, YouTubeVideoId
 
 
 class StreamUrlRepository(Protocol):
@@ -39,7 +39,7 @@ class StreamUrlRepository(Protocol):
         """
         ...
 
-    async def delete(self, video_id: VideoId) -> None:
+    async def delete(self, video_id: YouTubeVideoId) -> None:
         """
         VideoIdに紐づくStreamUrlを削除します
 
