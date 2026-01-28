@@ -3,13 +3,16 @@ URL解決Handlerモジュール
 
 FastAPIのエンドポイントを提供し、YouTube/Twitch URLを解決してストリームURLへリダイレクトします。
 このHandlerはプロキシAPIのメインエンドポイントとして機能します。
+proxyパラメータを使用することで、リダイレクトの代わりにプロキシ方式でストリーミングできます。
 """
 
 import logging
+from collections.abc import AsyncIterator
 from urllib.parse import urlparse
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 
 from streamshuttle.di.container import (
     get_resolve_twitch_url_use_case,
@@ -40,6 +43,17 @@ url_validator = UrlValidator(max_length=config.security.max_url_length)
 
 YOUTUBE_DOMAINS = ("youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.youtu.be")
 TWITCH_DOMAINS = ("twitch.tv", "www.twitch.tv", "m.twitch.tv", "clips.twitch.tv")
+
+PROXY_CHUNK_SIZE = 64 * 1024  # 64KB chunks for streaming
+PROXY_TIMEOUT = httpx.Timeout(30.0, connect=10.0)
+
+# Headers to forward from upstream response
+FORWARDED_HEADERS = (
+    "content-type",
+    "content-length",
+    "accept-ranges",
+    "content-range",
+)
 
 
 def _get_url_domain(url: str) -> str | None:
