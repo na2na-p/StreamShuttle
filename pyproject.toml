@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14.2"
 dependencies = [
     "fastapi>=0.128.0,<0.128.1",
-    "yt-dlp>=2025.12.8,<2026.0.0",
+    "yt-dlp>=2026.1.29,<2026.1.30",
     "yt-dlp-ejs>=0.3.2,<0.4.0",
     "redis>=7.1.0,<7.1.1",
     "uvicorn[standard]>=0.40.0,<0.40.1",
