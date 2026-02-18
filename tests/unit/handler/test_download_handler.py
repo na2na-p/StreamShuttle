@@ -104,8 +104,8 @@ def client(
         TestClient: FastAPI TestClient
     """
     app.dependency_overrides[get_video_formats_use_case] = lambda: mock_get_formats_use_case
-    app.dependency_overrides[get_or_resolve_stream_url_use_case] = (
-        lambda: mock_get_or_resolve_use_case
+    app.dependency_overrides[get_or_resolve_stream_url_use_case] = lambda: (
+        mock_get_or_resolve_use_case
     )
     app.dependency_overrides[get_redis_dao] = lambda: mock_redis_dao
     return TestClient(app)
