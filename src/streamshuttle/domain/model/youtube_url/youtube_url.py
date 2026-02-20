@@ -79,5 +79,19 @@ class YoutubeUrl:
 
         raise InvalidVideoIdError(f"Could not extract video ID from URL: {self._value}")
 
+    def try_extract_video_id(self) -> YouTubeVideoId | None:
+        """URLからvideo_idの抽出を試みる
+
+        extract_video_id()と異なり、抽出できない場合はNoneを返す。
+        /@channel/live のようなvideo_idを含まないURLに対応するために使用する。
+
+        Returns:
+            YouTubeVideoId | None: 抽出された動画ID、または抽出できない場合はNone
+        """
+        try:
+            return self.extract_video_id()
+        except InvalidVideoIdError:
+            return None
+
     def __str__(self) -> str:
         return self._value

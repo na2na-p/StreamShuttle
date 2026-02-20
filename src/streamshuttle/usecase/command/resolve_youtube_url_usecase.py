@@ -46,6 +46,10 @@ class ResolveYoutubeUrlUseCase:
         """
         YouTube URLをストリームURLに解決します
 
+        URLからvideo_idを事前抽出できる場合はキャッシュを確認します。
+        /@channel/live のようにvideo_idを含まないURLの場合は
+        キャッシュをスキップし、直接Resolverで解決します。
+
         Args:
             youtube_url: YouTube動画URL（YoutubeUrl ValueObject）
             format_id: フォーマットID（オプショナル）
@@ -55,26 +59,28 @@ class ResolveYoutubeUrlUseCase:
             str: 解決済みの直接ストリームURL
 
         Raises:
-            InvalidVideoIdError: video_idの抽出に失敗した場合
             InvalidUrlException: 無効なURLが指定された場合
             YouTubeResolverException: YouTube APIへのアクセスに失敗した場合
             CacheException: キャッシュ操作に失敗した場合
             HlsNotSupportedError: HLS形式が拒否された場合
         """
-        video_id = youtube_url.extract_video_id()
+        video_id = youtube_url.try_extract_video_id()
 
-        cached = await self._repository.find_by_video_id(str(video_id), hls)
+        if video_id:
+            cached = await self._repository.find_by_video_id(str(video_id), hls)
 
-        if cached and not cached.is_expired():
-            return cached.resolved_url.value
+            if cached and not cached.is_expired():
+                return cached.resolved_url.value
 
         result = await self._youtube_resolver.resolve_url(str(youtube_url), format_id, hls)
 
-        stream_url = StreamUrl.create(
-            video_id=str(video_id),
-            resolved_url=result.resolved_url,
-            ttl_seconds=result.ttl_seconds,
-        )
-        await self._repository.save(stream_url, hls)
+        cache_video_id = str(video_id) if video_id else result.video_id
+        if cache_video_id:
+            stream_url = StreamUrl.create(
+                video_id=cache_video_id,
+                resolved_url=result.resolved_url,
+                ttl_seconds=result.ttl_seconds,
+            )
+            await self._repository.save(stream_url, hls)
 
         return result.resolved_url

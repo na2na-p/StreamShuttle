@@ -190,3 +190,58 @@ class TestResolveYoutubeUrlUseCase:
         assert result == resolved_url
         mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url_str, format_id, False)
         mock_repository.save.assert_called_once()
+
+    async def test_execute_channel_live_url_skips_cache_lookup(
+        self,
+        usecase: ResolveYoutubeUrlUseCase,
+        mock_youtube_resolver: AsyncMock,
+        mock_repository: AsyncMock,
+    ) -> None:
+        """チャンネルライブURLの場合、キャッシュ参照をスキップして直接解決することをテスト"""
+        # Arrange
+        youtube_url_str = "https://www.youtube.com/@channelname/live"
+        youtube_url = YoutubeUrl(_value=youtube_url_str)
+        resolved_url = "https://example.com/live-stream.m3u8"
+        resolver_video_id = "abc12345678"
+
+        mock_youtube_resolver.resolve_url.return_value = ResolvedUrlResultDto(
+            resolved_url=resolved_url, ttl_seconds=3600, video_id=resolver_video_id
+        )
+
+        # Act
+        result = await usecase.execute(youtube_url)
+
+        # Assert
+        assert result == resolved_url
+        # キャッシュ参照はスキップされる
+        mock_repository.find_by_video_id.assert_not_called()
+        # Resolverが呼ばれる
+        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url_str, None, False)
+        # Resolverから返されたvideo_idでキャッシュに保存される
+        mock_repository.save.assert_called_once()
+        saved_stream_url = mock_repository.save.call_args[0][0]
+        assert saved_stream_url.video_id.value == resolver_video_id
+
+    async def test_execute_channel_live_url_no_video_id_skips_save(
+        self,
+        usecase: ResolveYoutubeUrlUseCase,
+        mock_youtube_resolver: AsyncMock,
+        mock_repository: AsyncMock,
+    ) -> None:
+        """Resolverからvideo_idが返されない場合、キャッシュ保存をスキップすることをテスト"""
+        # Arrange
+        youtube_url_str = "https://www.youtube.com/@channelname/live"
+        youtube_url = YoutubeUrl(_value=youtube_url_str)
+        resolved_url = "https://example.com/live-stream.m3u8"
+
+        mock_youtube_resolver.resolve_url.return_value = ResolvedUrlResultDto(
+            resolved_url=resolved_url, ttl_seconds=3600, video_id=None
+        )
+
+        # Act
+        result = await usecase.execute(youtube_url)
+
+        # Assert
+        assert result == resolved_url
+        mock_repository.find_by_video_id.assert_not_called()
+        mock_repository.save.assert_not_called()

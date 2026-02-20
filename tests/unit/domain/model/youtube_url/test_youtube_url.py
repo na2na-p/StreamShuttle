@@ -20,6 +20,9 @@ from streamshuttle.shared.exceptions import InvalidUrlError, InvalidVideoIdError
         pytest.param("https://www.youtu.be/dQw4w9WgXcQ", id="正常系: wwwありyoutu.be"),
         pytest.param("https://www.youtube.com/embed/dQw4w9WgXcQ", id="正常系: 埋め込みURL /embed/"),
         pytest.param("https://www.youtube.com/live/dQw4w9WgXcQ", id="正常系: ライブURL /live/"),
+        pytest.param(
+            "https://www.youtube.com/@channelname/live", id="正常系: チャンネルライブURL /@channel/live"
+        ),
         pytest.param("http://www.youtube.com/watch?v=dQw4w9WgXcQ", id="正常系: httpスキーム"),
     ],
 )
@@ -169,6 +172,31 @@ def test_extract_video_id_invalid_format(url: str, expected_message: str):
         youtube_url.extract_video_id()
 
     assert expected_message in str(exc_info.value)
+
+
+def test_try_extract_video_id_success():
+    """正常系: try_extract_video_idがvideo_idを返す"""
+    youtube_url = YoutubeUrl(_value="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    video_id = youtube_url.try_extract_video_id()
+
+    assert video_id is not None
+    assert video_id.value == "dQw4w9WgXcQ"
+
+
+def test_try_extract_video_id_returns_none_for_channel_live():
+    """正常系: チャンネルライブURLでtry_extract_video_idがNoneを返す"""
+    youtube_url = YoutubeUrl(_value="https://www.youtube.com/@channelname/live")
+    video_id = youtube_url.try_extract_video_id()
+
+    assert video_id is None
+
+
+def test_try_extract_video_id_returns_none_for_no_video_id():
+    """正常系: video_idがないURLでtry_extract_video_idがNoneを返す"""
+    youtube_url = YoutubeUrl(_value="https://www.youtube.com/")
+    video_id = youtube_url.try_extract_video_id()
+
+    assert video_id is None
 
 
 def test_youtube_url_immutability():

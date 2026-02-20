@@ -37,8 +37,9 @@ async def test_youtube_resolver_resolve_url_returns_stream_url(resolver):
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     expected_stream_url = "https://example.com/stream.m3u8?expire=1234567890"
+    resolved_info = {"url": expected_stream_url, "video_id": "dQw4w9WgXcQ"}
 
-    with patch.object(resolver, "_resolve_url_sync", return_value=expected_stream_url):
+    with patch.object(resolver, "_resolve_url_sync", return_value=resolved_info):
         with patch.object(resolver, "_extract_ttl_from_url", return_value=3600):
             # Act
             result = await resolver.resolve_url(youtube_url=youtube_url)
@@ -47,6 +48,7 @@ async def test_youtube_resolver_resolve_url_returns_stream_url(resolver):
     assert isinstance(result, ResolvedUrlResultDto)
     assert result.resolved_url == expected_stream_url
     assert result.ttl_seconds == 3600
+    assert result.video_id == "dQw4w9WgXcQ"
 
 
 async def test_youtube_resolver_resolve_url_raises_invalid_url_exception_for_no_scheme(resolver):
@@ -143,8 +145,9 @@ async def test_youtube_resolver_resolve_url_with_format_id(resolver):
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     format_id = "137"
     expected_stream_url = "https://example.com/stream.mp4?expire=1234567890"
+    resolved_info = {"url": expected_stream_url, "video_id": "dQw4w9WgXcQ"}
 
-    with patch.object(resolver, "_resolve_url_sync", return_value=expected_stream_url) as mock_sync:
+    with patch.object(resolver, "_resolve_url_sync", return_value=resolved_info) as mock_sync:
         with patch.object(resolver, "_extract_ttl_from_url", return_value=3600):
             # Act
             result = await resolver.resolve_url(youtube_url=youtube_url, format_id=format_id)
@@ -168,8 +171,9 @@ async def test_youtube_resolver_resolve_url_without_format_id(resolver):
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     expected_stream_url = "https://example.com/stream.m3u8?expire=1234567890"
+    resolved_info = {"url": expected_stream_url, "video_id": "dQw4w9WgXcQ"}
 
-    with patch.object(resolver, "_resolve_url_sync", return_value=expected_stream_url) as mock_sync:
+    with patch.object(resolver, "_resolve_url_sync", return_value=resolved_info) as mock_sync:
         with patch.object(resolver, "_extract_ttl_from_url", return_value=3600):
             # Act
             result = await resolver.resolve_url(youtube_url=youtube_url)
@@ -193,7 +197,7 @@ def test_youtube_resolver_resolve_url_sync_with_format_id(resolver):
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     format_id = "137"
     expected_url = "https://example.com/stream.mp4"
-    mock_info = {"url": expected_url}
+    mock_info = {"url": expected_url, "id": "dQw4w9WgXcQ"}
 
     with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
         mock_ydl = mock_ydl_class.return_value.__enter__.return_value
@@ -203,7 +207,7 @@ def test_youtube_resolver_resolve_url_sync_with_format_id(resolver):
         result = resolver._resolve_url_sync(youtube_url=youtube_url, format_id=format_id)
 
     # Assert
-    assert result == expected_url
+    assert result == {"url": expected_url, "video_id": "dQw4w9WgXcQ"}
     # yt-dlpのコンストラクタに渡されたオプションを確認
     call_args = mock_ydl_class.call_args
     ydl_opts = call_args[0][0]
@@ -221,7 +225,7 @@ def test_youtube_resolver_resolve_url_sync_without_format_id(resolver):
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     expected_url = "https://example.com/stream.m3u8"
-    mock_info = {"url": expected_url}
+    mock_info = {"url": expected_url, "id": "dQw4w9WgXcQ"}
 
     with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
         mock_ydl = mock_ydl_class.return_value.__enter__.return_value
@@ -231,7 +235,7 @@ def test_youtube_resolver_resolve_url_sync_without_format_id(resolver):
         result = resolver._resolve_url_sync(youtube_url=youtube_url)
 
     # Assert
-    assert result == expected_url
+    assert result == {"url": expected_url, "video_id": "dQw4w9WgXcQ"}
     # yt-dlpのコンストラクタに渡されたオプションを確認
     call_args = mock_ydl_class.call_args
     ydl_opts = call_args[0][0]
@@ -296,7 +300,7 @@ def test_youtube_resolver_resolve_url_sync_with_video_only_format(resolver):
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     format_id = "137"
     expected_url = "https://example.com/video_only.mp4"
-    mock_info = {"url": expected_url}
+    mock_info = {"url": expected_url, "id": "dQw4w9WgXcQ"}
 
     with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
         mock_ydl = mock_ydl_class.return_value.__enter__.return_value
@@ -306,7 +310,7 @@ def test_youtube_resolver_resolve_url_sync_with_video_only_format(resolver):
         result = resolver._resolve_url_sync(youtube_url=youtube_url, format_id=format_id)
 
     # Assert
-    assert result == expected_url
+    assert result == {"url": expected_url, "video_id": "dQw4w9WgXcQ"}
     # yt-dlpのコンストラクタに渡されたオプションを確認
     call_args = mock_ydl_class.call_args
     ydl_opts = call_args[0][0]
@@ -326,7 +330,7 @@ def test_youtube_resolver_resolve_url_sync_with_audio_video_format(resolver):
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     format_id = "18"
     expected_url = "https://example.com/audio_video.mp4"
-    mock_info = {"url": expected_url}
+    mock_info = {"url": expected_url, "id": "dQw4w9WgXcQ"}
 
     with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
         mock_ydl = mock_ydl_class.return_value.__enter__.return_value
@@ -336,7 +340,7 @@ def test_youtube_resolver_resolve_url_sync_with_audio_video_format(resolver):
         result = resolver._resolve_url_sync(youtube_url=youtube_url, format_id=format_id)
 
     # Assert
-    assert result == expected_url
+    assert result == {"url": expected_url, "video_id": "dQw4w9WgXcQ"}
     # yt-dlpのコンストラクタに渡されたオプションを確認
     call_args = mock_ydl_class.call_args
     ydl_opts = call_args[0][0]

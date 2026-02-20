@@ -58,12 +58,12 @@ class YoutubeResolver:
             # URL検証はYoutubeUrl ValueObjectに委譲
             validated_url = YoutubeUrl(_value=youtube_url)
 
-            resolved_url = await asyncio.to_thread(
+            resolved_info = await asyncio.to_thread(
                 self._resolve_url_sync, validated_url.value, format_id, hls
             )
 
             try:
-                ttl_seconds = self._extract_ttl_from_url(resolved_url)
+                ttl_seconds = self._extract_ttl_from_url(resolved_info["url"])
             except (ValueError, KeyError, IndexError):
                 from streamshuttle.shared.config import config
 
@@ -76,11 +76,15 @@ class YoutubeResolver:
         except Exception as e:
             raise YouTubeResolverError(f"予期しないエラーが発生しました: {youtube_url}") from e
 
-        return ResolvedUrlResultDto(resolved_url=resolved_url, ttl_seconds=ttl_seconds)
+        return ResolvedUrlResultDto(
+            resolved_url=resolved_info["url"],
+            ttl_seconds=ttl_seconds,
+            video_id=resolved_info.get("video_id"),
+        )
 
     def _resolve_url_sync(
         self, youtube_url: str, format_id: str | None = None, hls: bool = False
-    ) -> str:
+    ) -> dict[str, str]:
         """
         yt-dlpを使用してYouTube URLを解決します（同期処理）
 
@@ -108,7 +112,7 @@ class YoutubeResolver:
             hls: HLS形式の使用（デフォルト: False）
 
         Returns:
-            str: 解決済みの直接ストリームURL
+            dict[str, str]: 解決結果（"url": ストリームURL, "video_id": ビデオID）
 
         Raises:
             yt_dlp.utils.DownloadError: URL解決に失敗した場合
@@ -134,7 +138,7 @@ class YoutubeResolver:
                 f"YouTube URLの解決に失敗しました（URLが取得できませんでした）: {youtube_url}"
             )
 
-        return info["url"]
+        return {"url": info["url"], "video_id": info.get("id")}
 
     def _extract_ttl_from_url(self, url: str) -> int:
         """

@@ -332,6 +332,24 @@ def test_resolve_twitch_url_with_resolver_error(client, mock_twitch_use_case):
     assert "Failed to resolve URL" in response.json()["detail"]
 
 
+def test_resolve_channel_live_url_success(client, mock_use_case):
+    """
+    正常系: チャンネルライブURLの解決が成功し、307リダイレクトが返されることを検証します
+    """
+    # Arrange
+    youtube_url = "https://www.youtube.com/@channelname/live"
+    resolved_url = "https://rr1---sn-example.googlevideo.com/videoplayback?..."
+    mock_use_case.execute.return_value = resolved_url
+
+    # Act
+    response = client.get(f"/resolve?url={youtube_url}", follow_redirects=False)
+
+    # Assert
+    assert response.status_code == 307
+    assert response.headers["location"] == resolved_url
+    mock_use_case.execute.assert_called_once_with(YoutubeUrl(youtube_url), hls=False)
+
+
 def test_resolve_url_with_unsupported_domain(client):
     """
     異常系: サポートされていないドメインの場合、400 Bad Requestが返されることを検証します
