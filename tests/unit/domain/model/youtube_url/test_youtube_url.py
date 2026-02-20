@@ -19,6 +19,7 @@ from streamshuttle.shared.exceptions import InvalidUrlError, InvalidVideoIdError
         pytest.param("https://youtu.be/dQw4w9WgXcQ", id="正常系: 短縮URL youtu.be"),
         pytest.param("https://www.youtu.be/dQw4w9WgXcQ", id="正常系: wwwありyoutu.be"),
         pytest.param("https://www.youtube.com/embed/dQw4w9WgXcQ", id="正常系: 埋め込みURL /embed/"),
+        pytest.param("https://www.youtube.com/live/dQw4w9WgXcQ", id="正常系: ライブURL /live/"),
         pytest.param("http://www.youtube.com/watch?v=dQw4w9WgXcQ", id="正常系: httpスキーム"),
     ],
 )
@@ -81,6 +82,26 @@ def test_youtube_url_invalid_url(invalid_url: str, expected_error: type):
             "https://www.youtube.com/embed/dQw4w9WgXcQ",
             "dQw4w9WgXcQ",
             id="正常系: 埋め込みURL",
+        ),
+        pytest.param(
+            "https://www.youtube.com/live/dQw4w9WgXcQ",
+            "dQw4w9WgXcQ",
+            id="正常系: ライブURL /live/",
+        ),
+        pytest.param(
+            "https://youtube.com/live/dQw4w9WgXcQ",
+            "dQw4w9WgXcQ",
+            id="正常系: ライブURL wwwなし",
+        ),
+        pytest.param(
+            "https://m.youtube.com/live/dQw4w9WgXcQ",
+            "dQw4w9WgXcQ",
+            id="正常系: ライブURL モバイル版",
+        ),
+        pytest.param(
+            "https://www.youtube.com/live/dQw4w9WgXcQ?si=abc123",
+            "dQw4w9WgXcQ",
+            id="正常系: ライブURL+パラメータ",
         ),
         pytest.param(
             "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10s",

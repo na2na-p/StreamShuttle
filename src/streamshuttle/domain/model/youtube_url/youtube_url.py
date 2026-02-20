@@ -67,6 +67,11 @@ class YoutubeUrl:
                 if video_id:
                     return YouTubeVideoId(_value=video_id)
 
+            elif parsed.path.startswith("/live/"):
+                video_id = parsed.path.split("/live/")[1].split("/")[0].split("?")[0]
+                if video_id:
+                    return YouTubeVideoId(_value=video_id)
+
         elif parsed.hostname in ("youtu.be", "www.youtu.be"):
             video_id = parsed.path.lstrip("/").split("/")[0].split("?")[0]
             if video_id:
