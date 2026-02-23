@@ -9,6 +9,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel, Field
 
 from streamshuttle.di.container import (
     get_or_resolve_stream_url_use_case,
@@ -24,10 +25,18 @@ from streamshuttle.shared.exceptions import (
 from streamshuttle.shared.rate_limiter import limiter
 from streamshuttle.shared.validators.referer_validator import RefererValidator
 from streamshuttle.shared.validators.url_validator import UrlValidator
+from streamshuttle.usecase.dto.video_format_dto import VideoFormatDto
+from streamshuttle.usecase.dto.video_info_dto import VideoInfoDto
 from streamshuttle.usecase.facade.get_or_resolve_stream_url_usecase import (
     GetOrResolveStreamUrlUseCase,
 )
 from streamshuttle.usecase.query.get_video_formats_usecase import GetVideoFormatsUseCase
+
+
+class VideoFormatsResponse(BaseModel):
+    video_info: VideoInfoDto = Field(..., description="動画基本情報")
+    formats: list[VideoFormatDto] = Field(..., description="利用可能なフォーマット一覧")
+    csrf_token: str = Field(..., description="CSRFトークン")
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -35,13 +44,13 @@ url_validator = UrlValidator(max_length=config.security.max_url_length)
 referer_validator = RefererValidator(allowed_origins=config.cors.allowed_origins)
 
 
-@router.get("/formats")
+@router.get("/formats", response_model=VideoFormatsResponse)
 @limiter.limit(config.rate_limit.formats)
 async def get_formats(
     request: Request,
     url: str = Query(..., description="YouTube動画URL"),
     use_case: GetVideoFormatsUseCase = Depends(get_video_formats_use_case),
-):
+) -> VideoFormatsResponse:
     """
     YouTube動画の利用可能なフォーマット一覧と動画情報を取得します
 
@@ -91,11 +100,11 @@ async def get_formats(
         video_info, formats = await use_case.execute(url)
 
         csrf_token = generate_csrf_token()
-        return {
-            "video_info": video_info.model_dump(),
-            "formats": [f.model_dump() for f in formats],
-            "csrf_token": csrf_token,
-        }
+        return VideoFormatsResponse(
+            video_info=video_info,
+            formats=formats,
+            csrf_token=csrf_token,
+        )
     except InvalidUrlError:
         logger.warning(f"Invalid URL in get_formats: url={url}", exc_info=True)
         raise HTTPException(status_code=400, detail="Invalid URL format.")
