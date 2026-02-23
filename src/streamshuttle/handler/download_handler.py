@@ -14,6 +14,7 @@ from streamshuttle.di.container import (
     get_or_resolve_stream_url_use_case,
     get_video_formats_use_case,
 )
+from streamshuttle.handler.response.formats_response import FormatsResponse
 from streamshuttle.shared.config import config
 from streamshuttle.shared.csrf_token import generate_csrf_token, verify_csrf_token
 from streamshuttle.shared.exceptions import (
@@ -41,7 +42,7 @@ async def get_formats(
     request: Request,
     url: str = Query(..., description="YouTube動画URL"),
     use_case: GetVideoFormatsUseCase = Depends(get_video_formats_use_case),
-):
+) -> FormatsResponse:
     """
     YouTube動画の利用可能なフォーマット一覧と動画情報を取得します
 
@@ -58,26 +59,7 @@ async def get_formats(
         use_case: GetVideoFormatsUseCase（DIコンテナから注入）
 
     Returns:
-        dict: 以下の形式のJSON
-            {
-                "video_info": {
-                    "video_id": "dQw4w9WgXcQ",
-                    "title": "動画タイトル",
-                    "thumbnail_url": "https://i.ytimg.com/vi/..."
-                },
-                "formats": [
-                    {
-                        "format_id": "137",
-                        "quality": "1080p",
-                        "codec": "avc1",
-                        "url": "https://...",
-                        "has_audio": false,
-                        "has_video": true
-                    },
-                    ...
-                ],
-                "csrf_token": "生成されたCSRFトークン"
-            }
+        FormatsResponse: 動画情報、フォーマット一覧、CSRFトークンを含むレスポンス
 
     Raises:
         HTTPException: 以下の場合にHTTPエラーを返します
@@ -91,11 +73,11 @@ async def get_formats(
         video_info, formats = await use_case.execute(url)
 
         csrf_token = generate_csrf_token()
-        return {
-            "video_info": video_info.model_dump(),
-            "formats": [f.model_dump() for f in formats],
-            "csrf_token": csrf_token,
-        }
+        return FormatsResponse(
+            video_info=video_info,
+            formats=formats,
+            csrf_token=csrf_token,
+        )
     except InvalidUrlError:
         logger.warning(f"Invalid URL in get_formats: url={url}", exc_info=True)
         raise HTTPException(status_code=400, detail="Invalid URL format.")
