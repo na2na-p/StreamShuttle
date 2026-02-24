@@ -171,14 +171,14 @@ async def test_video_format_query_service_get_available_formats_raises_youtube_r
             await query_service.get_available_formats(youtube_url=youtube_url)
 
 
-async def test_video_format_query_service_filters_out_hls_formats(query_service):
+async def test_video_format_query_service_includes_hls_formats(query_service):
     """
     正常系: VideoFormatQueryService.get_available_formats()がHLSフォーマット
-    (m3u8系プロトコル)を除外することを確認
+    (m3u8系プロトコル)を含めて返すことを確認
 
     Arrange: yt-dlpの_extract_infoをモックしてHLSと通常フォーマットを返す
     Act: VideoFormatQueryService.get_available_formats()を呼び出す
-    Assert: HLSフォーマットが除外され、通常フォーマットのみが返されることを確認
+    Assert: HLSフォーマットも通常フォーマットも全て返されることを確認
     """
     # Arrange
     youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -225,10 +225,12 @@ async def test_video_format_query_service_filters_out_hls_formats(query_service)
 
     # Assert
     assert isinstance(video_info, VideoInfoDto)
-    assert len(formats) == 1
-    assert formats[0].format_id == "137"
-    assert formats[0].quality == "1080p"
-    assert formats[0].codec == "h264"
+    assert len(formats) == 4
+    format_ids = [f.format_id for f in formats]
+    assert "91" in format_ids
+    assert "92" in format_ids
+    assert "93" in format_ids
+    assert "137" in format_ids
 
 
 async def test_video_format_query_service_sets_has_audio_and_has_video_flags(query_service):

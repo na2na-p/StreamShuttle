@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const videoThumbnail = document.getElementById('video-thumbnail');
   const videoTitle = document.getElementById('video-title');
   const videoId = document.getElementById('video-id');
+  const urlNotice = document.getElementById('url-notice');
 
   // 状態管理
   let selectedFormat = null;
@@ -32,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
     formatsContainer.classList.add('hidden');
     videoInfoContainer.classList.add('hidden');
     downloadContainer.classList.add('hidden');
+    urlNotice.classList.add('hidden');
     fetchFormatsBtn.disabled = true;
     fetchFormatsBtn.textContent = '取得中...';
 
@@ -88,7 +90,22 @@ document.addEventListener('DOMContentLoaded', function() {
       if (typeClass) {
         option.classList.add(typeClass);
       }
-      option.textContent = `${format.quality} - ${format.codec}`;
+
+      const label = document.createElement('span');
+      label.className = 'format-label';
+      label.textContent = `${format.quality} - ${format.codec}`;
+      option.appendChild(label);
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-url-btn';
+      copyBtn.textContent = 'URLコピー';
+      copyBtn.type = 'button';
+      copyBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        copyToClipboard(format.url);
+      });
+      option.appendChild(copyBtn);
+
       option.dataset.formatId = format.format_id;
 
       option.addEventListener('click', function() {
@@ -104,6 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     formatsContainer.classList.remove('hidden');
+    urlNotice.classList.remove('hidden');
   }
 
   // ダウンロードボタンのクリックイベント
@@ -126,5 +144,33 @@ document.addEventListener('DOMContentLoaded', function() {
   // エラーメッセージを非表示
   function hideError() {
     errorMessage.classList.add('hidden');
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('URLをコピーしました');
+    } catch (err) {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      showToast('URLをコピーしました');
+    }
+  }
+
+  function showToast(message) {
+    const existing = document.querySelector('.toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
   }
 });

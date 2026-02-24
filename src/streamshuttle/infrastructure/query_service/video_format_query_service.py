@@ -82,11 +82,6 @@ class VideoFormatQueryService:
             if not all(key in fmt for key in ["format_id", "url"]):
                 continue
 
-            # HLSフォーマット（m3u8）を除外
-            protocol = fmt.get("protocol", "")
-            if protocol in ("m3u8", "m3u8_native", "m3u8_native+http"):
-                continue
-
             # 音声と動画の有無を確認
             acodec = fmt.get("acodec", "none")
             vcodec = fmt.get("vcodec", "none")
