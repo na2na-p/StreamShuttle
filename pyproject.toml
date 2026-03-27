@@ -28,6 +28,9 @@ dev = [
     "fakeredis>=2.34.1,<3.0.0",
 ]
 
+[tool.uv]
+exclude-newer = "1 week"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
