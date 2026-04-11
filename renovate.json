@@ -23,6 +23,6 @@
     }
   ],
   "rangeStrategy": "bump",
-  "minimumReleaseAge": "7 days",
+  "minimumReleaseAge": "14 days",
   "labels": ["renovate"]
 }
