@@ -20,6 +20,12 @@
       "groupName": "dev dependencies",
       "matchDepTypes": ["dev"],
       "matchManagers": ["pep621"]
+    },
+    {
+      "groupName": "python version",
+      "groupSlug": "python-version",
+      "matchPackageNames": ["python"],
+      "matchManagers": ["dockerfile", "pep621"]
     }
   ],
   "rangeStrategy": "bump",
