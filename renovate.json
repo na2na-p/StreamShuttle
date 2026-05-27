@@ -25,7 +25,8 @@
       "groupName": "python version",
       "groupSlug": "python-version",
       "matchPackageNames": ["python"],
-      "matchManagers": ["dockerfile", "pep621"]
+      "matchManagers": ["dockerfile", "pep621", "asdf"],
+      "minimumReleaseAge": "0 days"
     }
   ],
   "rangeStrategy": "bump",
