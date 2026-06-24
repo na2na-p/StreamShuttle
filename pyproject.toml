@@ -3,7 +3,7 @@ name = "streamshuttle"
 version = "1.0.0"
 description = "YouTube URL resolver and proxy service for VRChat video players"
 readme = "README.md"
-requires-python = ">=3.14.5"
+requires-python = ">=3.14.6"
 dependencies = [
     "fastapi>=0.136.3,<0.136.4",
     "yt-dlp>=2026.6.9,<2026.6.10",
