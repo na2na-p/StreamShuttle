@@ -54,6 +54,7 @@ jobs:
         with:
           name: coverage-report
           path: htmlcov/
+          retention-days: 3
 
   docker-build:
     runs-on: ubuntu-latest
@@ -69,6 +70,8 @@ jobs:
 
       - name: Build Docker image
         uses: docker/build-push-action@v7
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           context: .
           push: false
