@@ -57,6 +57,31 @@ class YtDlpOptionsFactory:
         return options
 
     @staticmethod
+    def create_playlist_extraction_options(playlist_end: int) -> dict:
+        """プレイリスト情報取得用オプションを生成
+
+        プレイリストに含まれる動画一覧をフラット抽出するためのオプション。
+        各動画のフォーマット解決は行わず、ID・タイトル・長さのみを取得するため、
+        大きなプレイリストでも高速に一覧を取得できる。
+
+        Args:
+            playlist_end: 取得を打ち切る位置（yt-dlpのplaylistendに対応）
+
+        Returns:
+            dict: yt-dlpオプション辞書
+        """
+        options = YtDlpOptionsFactory.create_base_options()
+        options.update(
+            {
+                "extract_flat": True,
+                "noplaylist": False,
+                "playlistend": playlist_end,
+                "skip_download": True,
+            }
+        )
+        return options
+
+    @staticmethod
     def create_url_resolution_options(format_spec: str, hls: bool = False) -> dict:
         """URL解決用オプションを生成
 

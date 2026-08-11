@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}プレイリストプレイヤー - StreamShuttle{% endblock %}
+
+{% block content %}
+<section class="player-section">
+  <form id="playlist-form">
+    <label for="playlist-url-input">YouTube公開プレイリストURL:</label>
+    <input
+      type="url"
+      id="playlist-url-input"
+      name="url"
+      placeholder="https://www.youtube.com/playlist?list=..."
+      required
+    >
+    <button type="button" id="load-playlist-btn">プレイリスト読み込み</button>
+  </form>
+
+  <div id="player-error" class="error hidden"></div>
+  <div id="player-notice" class="notice hidden"></div>
+
+  <div id="player-container" class="hidden">
+    <div class="playlist-header">
+      <h2 id="playlist-title"></h2>
+      <p id="playlist-meta" class="playlist-meta"></p>
+    </div>
+
+    <video id="video-player" class="video-player" controls playsinline preload="metadata"></video>
+
+    <p id="now-playing" class="now-playing"></p>
+
+    <div class="player-controls">
+      <button type="button" id="prev-btn">前へ</button>
+      <button type="button" id="next-btn">次へ</button>
+      <label class="toggle">
+        <input type="checkbox" id="shuffle-toggle">
+        シャッフル
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="repeat-toggle" checked>
+        繰り返し
+      </label>
+    </div>
+
+    <ol id="playlist-items" class="playlist-items"></ol>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/player.js"></script>{% endblock %}

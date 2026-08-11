@@ -79,6 +79,43 @@ class InvalidVideoIdError(StreamShuttleError):
         super().__init__(message)
 
 
+class InvalidPlaylistIdError(StreamShuttleError):
+    """
+    不正なプレイリストIDエラー例外クラス
+
+    YouTubeプレイリストIDが無効な形式、またはURLから抽出できない場合に発生する
+    エラーを表現します。非公開プレイリスト（後で見る、高く評価した動画）の指定も
+    このエラーとして扱います。
+    """
+
+    def __init__(self, message: str = "プレイリストIDが無効です") -> None:
+        """
+        不正なプレイリストIDエラーを初期化します
+
+        Args:
+            message: エラーメッセージ（デフォルト: "プレイリストIDが無効です"）
+        """
+        super().__init__(message)
+
+
+class PlaylistNotFoundError(StreamShuttleError):
+    """
+    プレイリスト取得失敗エラー例外クラス
+
+    プレイリストが存在しない、非公開である、または再生可能な動画を1件も
+    含まない場合に発生するエラーを表現します。
+    """
+
+    def __init__(self, message: str = "プレイリストが見つかりませんでした") -> None:
+        """
+        プレイリスト取得失敗エラーを初期化します
+
+        Args:
+            message: エラーメッセージ（デフォルト: "プレイリストが見つかりませんでした"）
+        """
+        super().__init__(message)
+
+
 class InvalidUrlError(StreamShuttleError):
     """
     不正なURL例外クラス

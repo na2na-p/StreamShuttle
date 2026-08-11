@@ -19,6 +19,18 @@ class RateLimitConfig(BaseSettings):
         default="5/minute",
         description="downloadエンドポイントのレート制限（デフォルト: 5リクエスト/分）",
     )
+    playlist: str = Field(
+        default="5/minute",
+        description="playlistエンドポイントのレート制限（デフォルト: 5リクエスト/分）",
+    )
+    playlist_stream: str = Field(
+        default="30/minute",
+        description="""playlist/streamエンドポイントのレート制限（デフォルト: 30リクエスト/分）
+
+        プレイリスト再生では曲送りのたびにURL解決が発生するため、
+        他のエンドポイントより緩い制限を設定しています。
+        """,
+    )
 
     model_config = {
         "env_prefix": "RATE_LIMIT_",

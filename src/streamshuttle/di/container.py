@@ -11,6 +11,12 @@ from streamshuttle.infrastructure.external.youtube_resolver import YoutubeResolv
 from streamshuttle.infrastructure.query_service.format_url_query_service import (
     FormatUrlQueryService,
 )
+from streamshuttle.infrastructure.query_service.playlist_cache_query_service import (
+    PlaylistCacheQueryService,
+)
+from streamshuttle.infrastructure.query_service.playlist_query_service import (
+    PlaylistQueryService,
+)
 from streamshuttle.infrastructure.query_service.stream_url_query_service import (
     StreamUrlQueryService,
 )
@@ -19,6 +25,9 @@ from streamshuttle.infrastructure.query_service.video_format_query_service impor
 )
 from streamshuttle.infrastructure.query_service.video_formats_cache_query_service import (
     VideoFormatsCacheQueryService,
+)
+from streamshuttle.infrastructure.repository.playlist_repository import (
+    PlaylistRepository,
 )
 from streamshuttle.infrastructure.repository.redis_cache_repository import (
     RedisCacheRepository,
@@ -45,6 +54,7 @@ from streamshuttle.usecase.query.get_cached_format_url_usecase import (
 from streamshuttle.usecase.query.get_cached_stream_url_usecase import (
     GetCachedStreamUrlUseCase,
 )
+from streamshuttle.usecase.query.get_playlist_usecase import GetPlaylistUseCase
 from streamshuttle.usecase.query.get_video_formats_usecase import GetVideoFormatsUseCase
 
 # グローバルインスタンス（シングルトン）
@@ -149,6 +159,59 @@ def get_format_url_query_service() -> FormatUrlQueryService:
         FormatUrlQueryService: 初期化済みのQueryServiceインスタンス
     """
     return FormatUrlQueryService(redis_dao=get_redis_dao())
+
+
+def get_playlist_query_service() -> PlaylistQueryService:
+    """
+    PlaylistQueryServiceインスタンスを生成
+
+    取得件数の上限をセキュリティ設定から注入して生成します。
+
+    Returns:
+        PlaylistQueryService: 初期化済みのQueryServiceインスタンス
+    """
+    return PlaylistQueryService(max_items=config.security.max_playlist_items)
+
+
+def get_playlist_repository() -> PlaylistRepository:
+    """
+    PlaylistRepositoryインスタンスを生成
+
+    PlaylistRepositoryに必要なRedisDaoを注入して生成します。
+
+    Returns:
+        PlaylistRepository: 初期化済みのRepositoryインスタンス
+    """
+    return PlaylistRepository(redis_dao=get_redis_dao())
+
+
+def get_playlist_cache_query_service() -> PlaylistCacheQueryService:
+    """
+    PlaylistCacheQueryServiceインスタンスを生成
+
+    PlaylistCacheQueryServiceに必要なRedisDaoを注入して生成します。
+
+    Returns:
+        PlaylistCacheQueryService: 初期化済みのQueryServiceインスタンス
+    """
+    return PlaylistCacheQueryService(redis_dao=get_redis_dao())
+
+
+def get_playlist_use_case() -> GetPlaylistUseCase:
+    """
+    GetPlaylistUseCaseインスタンスを生成
+
+    必要な依存関係（yt-dlp QueryService、キャッシュRepository、キャッシュQueryService）
+    をすべて注入して生成します。
+
+    Returns:
+        GetPlaylistUseCase: 初期化済みのUseCaseインスタンス
+    """
+    return GetPlaylistUseCase(
+        query_service=get_playlist_query_service(),
+        repository=get_playlist_repository(),
+        cache_query_service=get_playlist_cache_query_service(),
+    )
 
 
 def get_youtube_resolver() -> YoutubeResolver:
