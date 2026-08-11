@@ -42,6 +42,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "script-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "  # Jinja2テンプレートのインラインスタイル許可
             "img-src 'self' data: https://i.ytimg.com; "  # YouTubeサムネイル画像を許可
+            # プレイヤーが再生する解決済みストリーム（Googleの動画配信ドメイン）を許可
+            "media-src 'self' https://*.googlevideo.com; "
             "connect-src 'self'; "
             "frame-ancestors 'none';"
         )

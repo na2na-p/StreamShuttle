@@ -26,6 +26,15 @@ class SecurityConfig(BaseSettings):
         - Log file bloat attacks
         """,
     )
+    max_playlist_items: int = Field(
+        default=200,
+        description="""Maximum number of playlist items to fetch (default: 200 items)
+
+        As a security measure for public usage, limits the number of videos fetched
+        from a single playlist. Prevents memory exhaustion and long-running yt-dlp
+        extraction caused by playlists containing thousands of videos.
+        """,
+    )
     csrf_secret_key: str = Field(
         description=(
             "Secret key for CSRF protection (environment variable: SECURITY_CSRF_SECRET_KEY)"

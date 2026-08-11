@@ -36,7 +36,8 @@ main {
   padding: 0 1rem;
 }
 
-.download-section {
+.download-section,
+.player-section {
   background: white;
   padding: 2rem;
   border-radius: 8px;
@@ -297,7 +298,8 @@ button:disabled {
     margin: 1rem auto;
   }
 
-  .download-section {
+  .download-section,
+  .player-section {
     padding: 1.5rem;
   }
 
@@ -307,5 +309,148 @@ button:disabled {
 
   header h1 {
     font-size: 1.5rem;
+  }
+}
+
+/* グローバルナビゲーション */
+.global-nav {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.global-nav a {
+  color: #ecf0f1;
+  text-decoration: none;
+  font-size: 0.95rem;
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.3s;
+}
+
+.global-nav a:hover {
+  border-bottom-color: #3498db;
+}
+
+/* お知らせメッセージ */
+.notice {
+  color: #7d6608;
+  padding: 1rem;
+  background-color: #fcf3cf;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+/* プレイヤー */
+.playlist-header {
+  margin-top: 2rem;
+}
+
+.playlist-header h2 {
+  font-size: 1.3rem;
+  color: #2c3e50;
+  word-wrap: break-word;
+}
+
+.playlist-meta {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+}
+
+.video-player {
+  width: 100%;
+  margin-top: 1rem;
+  background-color: #000;
+  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+}
+
+.now-playing {
+  margin-top: 0.75rem;
+  font-weight: 600;
+  color: #2c3e50;
+  word-wrap: break-word;
+}
+
+.player-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.player-controls .toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 400;
+  color: #555;
+  cursor: pointer;
+}
+
+/* プレイリスト一覧 */
+.playlist-items {
+  list-style: none;
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.playlist-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.playlist-item:hover {
+  border-color: #3498db;
+  background-color: #ecf0f1;
+}
+
+.playlist-item.playing {
+  border-color: #3498db;
+  background-color: #d6eaf8;
+}
+
+.playlist-item-thumbnail {
+  width: 120px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.playlist-item-title {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.playlist-item-duration {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  font-family: monospace;
+  flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .playlist-item-thumbnail {
+    width: 80px;
+    height: 45px;
+  }
+
+  .playlist-item-title {
+    font-size: 0.9rem;
   }
 }

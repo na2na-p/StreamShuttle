@@ -216,3 +216,97 @@ def test_download_endpoint_with_real_youtube_url(client):
 
     # 307 Temporary Redirectまたはエラーが返されることを確認
     assert response.status_code in [307, 400, 502, 500]
+
+
+def test_player_page(client):
+    """
+    プレイヤーページ（GET /player）が正常に動作することを確認
+
+    プレイヤーUIのHTMLページが正しく返されることをテストします。
+
+    Args:
+        client: TestClientインスタンス
+    """
+    response = client.get("/player")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+
+    html_content = response.text
+    assert "<!DOCTYPE html>" in html_content
+    assert "playlist-url-input" in html_content
+    # プレイヤーページではプレイヤー用のスクリプトのみ読み込む
+    assert "/static/js/player.js" in html_content
+    assert "/static/js/app.js" not in html_content
+
+
+def test_player_page_allows_stream_media_in_csp(client):
+    """
+    プレイヤーが解決済みストリームを再生できるCSPが設定されていることを確認
+
+    Args:
+        client: TestClientインスタンス
+    """
+    response = client.get("/player")
+
+    csp = response.headers["content-security-policy"]
+    assert "media-src 'self' https://*.googlevideo.com" in csp
+
+
+def test_playlist_endpoint_requires_url_parameter(client):
+    """
+    /playlistエンドポイントがURLパラメータを要求することを確認
+
+    Args:
+        client: TestClientインスタンス
+    """
+    response = client.get("/playlist")
+    # urlパラメータがない場合は422エラー
+    assert response.status_code == 422
+
+
+def test_playlist_endpoint_with_invalid_url(client):
+    """
+    /playlistエンドポイントに不正なURLを渡した場合のエラーハンドリングを確認
+
+    Args:
+        client: TestClientインスタンス
+    """
+    response = client.get("/playlist?url=invalid_url")
+    # 不正なURLの場合は400 Bad Request
+    assert response.status_code == 400
+
+
+def test_playlist_endpoint_without_list_parameter(client):
+    """
+    /playlistエンドポイントにlistパラメータのないURLを渡した場合の動作を確認
+
+    Args:
+        client: TestClientインスタンス
+    """
+    response = client.get("/playlist?url=https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    # プレイリストIDが抽出できない場合は400 Bad Request
+    assert response.status_code == 400
+
+
+def test_playlist_stream_endpoint_requires_video_id_parameter(client):
+    """
+    /playlist/streamエンドポイントがvideo_idパラメータを要求することを確認
+
+    Args:
+        client: TestClientインスタンス
+    """
+    response = client.get("/playlist/stream")
+    # video_idパラメータがない場合は422エラー
+    assert response.status_code == 422
+
+
+def test_playlist_stream_endpoint_with_invalid_video_id(client):
+    """
+    /playlist/streamエンドポイントに不正な動画IDを渡した場合のエラーハンドリングを確認
+
+    Args:
+        client: TestClientインスタンス
+    """
+    response = client.get("/playlist/stream?video_id=invalid")
+    # 動画ID形式が不正な場合は400 Bad Request
+    assert response.status_code == 400

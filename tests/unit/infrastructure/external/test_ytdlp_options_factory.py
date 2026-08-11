@@ -216,3 +216,38 @@ class TestYtDlpOptionsFactory:
         # Assert
         assert key in options
         assert options[key] == expected_value
+
+    def test_create_playlist_extraction_options_inherits_base_options(self):
+        """プレイリスト取得オプションが基本オプションを継承することを確認"""
+        # Act
+        base_options = YtDlpOptionsFactory.create_base_options()
+        playlist_options = YtDlpOptionsFactory.create_playlist_extraction_options(playlist_end=201)
+
+        # Assert - 基本オプションのキーが全て含まれる
+        for key in base_options.keys():
+            assert key in playlist_options
+
+    @pytest.mark.parametrize(
+        "key, expected_value",
+        [
+            pytest.param("extract_flat", True, id="正常系: extract_flatがTrueである"),
+            pytest.param("noplaylist", False, id="正常系: noplaylistがFalseである"),
+            pytest.param("skip_download", True, id="正常系: skip_downloadがTrueである"),
+        ],
+    )
+    def test_create_playlist_extraction_options_has_specific_settings(self, key, expected_value):
+        """プレイリスト取得オプションに固有の設定が含まれることを確認"""
+        # Act
+        options = YtDlpOptionsFactory.create_playlist_extraction_options(playlist_end=201)
+
+        # Assert
+        assert key in options
+        assert options[key] == expected_value
+
+    def test_create_playlist_extraction_options_sets_playlist_end(self):
+        """プレイリスト取得オプションに取得上限が設定されることを確認"""
+        # Act
+        options = YtDlpOptionsFactory.create_playlist_extraction_options(playlist_end=42)
+
+        # Assert
+        assert options["playlistend"] == 42

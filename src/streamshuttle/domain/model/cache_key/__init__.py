@@ -5,6 +5,7 @@ cache_key domain model package
 """
 
 from streamshuttle.domain.model.cache_key.format_url_cache_key import FormatUrlCacheKey
+from streamshuttle.domain.model.cache_key.playlist_cache_key import PlaylistCacheKey
 from streamshuttle.domain.model.cache_key.stream_url_cache_key import StreamUrlCacheKey
 
-__all__ = ["StreamUrlCacheKey", "FormatUrlCacheKey"]
+__all__ = ["StreamUrlCacheKey", "FormatUrlCacheKey", "PlaylistCacheKey"]

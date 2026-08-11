@@ -17,6 +17,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from streamshuttle.di.container import get_redis_dao
 from streamshuttle.handler.download_handler import router as download_router
+from streamshuttle.handler.playlist_handler import router as playlist_router
 from streamshuttle.handler.resolve_handler import router as resolve_router
 from streamshuttle.shared.config import config
 from streamshuttle.shared.logging_config import setup_logging
@@ -87,6 +88,7 @@ templates = Jinja2Templates(directory="src/streamshuttle/templates")
 # ルーター登録
 app.include_router(resolve_router, tags=["Proxy API"])
 app.include_router(download_router, tags=["Download API"])
+app.include_router(playlist_router, tags=["Playlist API"])
 
 # 静的ファイル配信
 app.mount("/static", StaticFiles(directory="src/streamshuttle/static"), name="static")
@@ -108,6 +110,24 @@ async def index(request: Request):
         TemplateResponse: index.htmlテンプレートをレンダリングしたレスポンス
     """
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/player")
+async def player(request: Request):
+    """
+    プレイリストプレイヤーのページを表示します
+
+    YouTubeの公開プレイリストURLを入力すると、含まれる動画を順番に再生できる
+    プレイヤーUIをレンダリングします。動画一覧の取得と再生URLの解決は、
+    クライアントから GET /playlist および GET /playlist/stream を呼び出して行います。
+
+    Args:
+        request: FastAPIのRequestオブジェクト（Jinja2テンプレートレンダリングに必要）
+
+    Returns:
+        TemplateResponse: player.htmlテンプレートをレンダリングしたレスポンス
+    """
+    return templates.TemplateResponse("player.html", {"request": request})
 
 
 @app.get("/healthz")
