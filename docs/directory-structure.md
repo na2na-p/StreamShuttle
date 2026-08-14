@@ -185,11 +185,9 @@ from streamshuttle.usecase.query.resolve_youtube_url_use_case import ResolveYout
 
 router = APIRouter()
 
+
 @router.get("/resolve")
-async def resolve_url(
-    url: str = Query(...),
-    use_case: ResolveYoutubeUrlUseCase = Depends()
-):
+async def resolve_url(url: str = Query(...), use_case: ResolveYoutubeUrlUseCase = Depends()):
     result = await use_case.execute(url)
     return RedirectResponse(url=result.stream_url, status_code=307)
 ```
@@ -381,9 +379,11 @@ from .video_id import VideoId
 from .resolved_url import ResolvedUrl
 from .cache_expiry import CacheExpiry
 
+
 @dataclass(frozen=True)
 class StreamUrl:
     """StreamUrl Aggregate"""
+
     _video_id: VideoId
     _resolved_url: ResolvedUrl
     _cache_expiry: CacheExpiry
@@ -426,6 +426,7 @@ class StreamUrl:
 from abc import ABC, abstractmethod
 from ..model.stream_url.stream_url import StreamUrl
 
+
 class StreamUrlRepository(ABC):
     """StreamUrl Repository インターフェース（更新系専用）"""
 
@@ -457,6 +458,7 @@ class StreamUrlRepository(ABC):
 from streamshuttle.domain.repository.stream_url_repository import StreamUrlRepository
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 
+
 class StreamUrlRepository(StreamUrlRepository):
     """Redis実装のStreamUrlRepository"""
 
@@ -468,7 +470,7 @@ class StreamUrlRepository(StreamUrlRepository):
         await self._redis_dao.set(
             key=stream_url.video_id.value,
             value=stream_url.resolved_url.value,
-            ttl=stream_url.cache_expiry.ttl_seconds
+            ttl=stream_url.cache_expiry.ttl_seconds,
         )
 ```
 
@@ -498,14 +500,15 @@ class StreamUrlRepository(StreamUrlRepository):
 import yt_dlp
 from streamshuttle.usecase.external.youtube_resolver import YoutubeResolver
 
+
 class YoutubeResolver(YoutubeResolver):
     """yt-dlp実装のYoutubeResolver"""
 
     async def resolve_url(self, youtube_url: str) -> str:
-        ydl_opts = {'format': 'best'}
+        ydl_opts = {"format": "best"}
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(youtube_url, download=False)
-            return info['url']
+            return info["url"]
 ```
 
 #### DAO (`infrastructure/dao/`)
