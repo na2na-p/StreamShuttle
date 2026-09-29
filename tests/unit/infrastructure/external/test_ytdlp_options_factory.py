@@ -2,7 +2,10 @@
 
 import pytest
 
-from streamshuttle.infrastructure.external.ytdlp_options_factory import YtDlpOptionsFactory
+from streamshuttle.infrastructure.external.ytdlp_options_factory import (
+    FALLBACK_PLAYER_CLIENTS,
+    YtDlpOptionsFactory,
+)
 from streamshuttle.shared.config import config
 
 
@@ -251,3 +254,60 @@ class TestYtDlpOptionsFactory:
 
         # Assert
         assert options["playlistend"] == 42
+
+    @pytest.mark.parametrize(
+        "hls, expected_skip",
+        [
+            pytest.param(
+                False, "hls", id="正常系: HLS無効時もplayer_clientが設定されhlsをスキップ"
+            ),
+            pytest.param(
+                True, "dash", id="正常系: HLS有効時もplayer_clientが設定されdashをスキップ"
+            ),
+        ],
+    )
+    def test_create_url_resolution_options_sets_player_client(self, hls, expected_skip):
+        """player_clients指定時にURL解決オプションへplayer_clientが設定されることを確認"""
+        # Act
+        options = YtDlpOptionsFactory.create_url_resolution_options(
+            format_spec="best", hls=hls, player_clients=("android",)
+        )
+
+        # Assert
+        assert options["extractor_args"]["youtube"] == {
+            "skip": [expected_skip],
+            "player_client": ["android"],
+        }
+
+    def test_create_url_resolution_options_omits_player_client_when_none(self):
+        """player_clients未指定時はplayer_clientキーが含まれないことを確認"""
+        # Act
+        options = YtDlpOptionsFactory.create_url_resolution_options(format_spec="best")
+
+        # Assert
+        assert options["extractor_args"]["youtube"] == {"skip": ["hls"]}
+
+    def test_create_format_extraction_options_sets_player_client(self):
+        """player_clients指定時にフォーマット抽出オプションへplayer_clientが設定されることを確認"""
+        # Act
+        options = YtDlpOptionsFactory.create_format_extraction_options(player_clients=("android",))
+
+        # Assert
+        assert options["extractor_args"]["youtube"] == {
+            "skip": ["hls"],
+            "player_client": ["android"],
+        }
+        assert options["format"] == "all"
+
+    def test_create_format_extraction_options_omits_player_client_when_none(self):
+        """player_clients未指定時はplayer_clientキーが含まれないことを確認"""
+        # Act
+        options = YtDlpOptionsFactory.create_format_extraction_options()
+
+        # Assert
+        assert options["extractor_args"]["youtube"] == {"skip": ["hls"]}
+
+    def test_fallback_player_clients_is_android(self):
+        """フォールバック用クライアントがandroidのみであることを確認"""
+        # Assert
+        assert FALLBACK_PLAYER_CLIENTS == ("android",)

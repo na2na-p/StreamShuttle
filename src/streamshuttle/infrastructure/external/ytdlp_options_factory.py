@@ -5,6 +5,11 @@ yt-dlpの共通オプションと用途別オプションを生成する。
 
 from streamshuttle.shared.config import config
 
+# YouTubeの既定プレイヤークライアントは音声+映像の結合済みフォーマットを返さないことがある。
+# androidは結合済みMP4(format 18)を安定して返し、URLも認証なしで再生できるため、
+# 既定クライアントで失敗した場合に限って使う。他のクライアントは同じformat 18でも403になる
+FALLBACK_PLAYER_CLIENTS: tuple[str, ...] = ("android",)
+
 
 class YtDlpOptionsFactory:
     """yt-dlpオプション生成ファクトリー"""
@@ -39,10 +44,14 @@ class YtDlpOptionsFactory:
         }
 
     @staticmethod
-    def create_format_extraction_options() -> dict:
+    def create_format_extraction_options(player_clients: tuple[str, ...] | None = None) -> dict:
         """フォーマット情報取得用オプションを生成
 
         動画フォーマット一覧を取得するためのオプション。
+
+        Args:
+            player_clients: 使用するYouTubeプレイヤークライアント。
+                Noneの場合はyt-dlpの既定に任せる
 
         Returns:
             dict: yt-dlpオプション辞書
@@ -56,6 +65,7 @@ class YtDlpOptionsFactory:
                 "skip_download": True,
             }
         )
+        YtDlpOptionsFactory._apply_player_clients(options, player_clients)
         return options
 
     @staticmethod
@@ -84,7 +94,11 @@ class YtDlpOptionsFactory:
         return options
 
     @staticmethod
-    def create_url_resolution_options(format_spec: str, hls: bool = False) -> dict:
+    def create_url_resolution_options(
+        format_spec: str,
+        hls: bool = False,
+        player_clients: tuple[str, ...] | None = None,
+    ) -> dict:
         """URL解決用オプションを生成
 
         指定されたフォーマットでストリームURLを解決するためのオプション。
@@ -92,6 +106,8 @@ class YtDlpOptionsFactory:
         Args:
             format_spec: yt-dlpのフォーマット指定文字列
             hls: HLS形式を使用するかどうか
+            player_clients: 使用するYouTubeプレイヤークライアント。
+                Noneの場合はyt-dlpの既定に任せる
 
         Returns:
             dict: yt-dlpオプション辞書
@@ -110,7 +126,14 @@ class YtDlpOptionsFactory:
         if hls:
             options["extractor_args"]["youtube"]["skip"] = ["dash"]
 
+        YtDlpOptionsFactory._apply_player_clients(options, player_clients)
         return options
+
+    @staticmethod
+    def _apply_player_clients(options: dict, player_clients: tuple[str, ...] | None) -> None:
+        """player_clientsが指定されている場合のみextractor_argsへ反映する"""
+        if player_clients is not None:
+            options["extractor_args"]["youtube"]["player_client"] = list(player_clients)
 
     @staticmethod
     def create_twitch_options(format_spec: str) -> dict:

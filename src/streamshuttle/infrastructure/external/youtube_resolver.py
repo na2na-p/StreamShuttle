@@ -5,13 +5,24 @@ UseCase層で定義されたYoutubeResolverインターフェースの実装ク�
 """
 
 import asyncio
+import logging
 
 import yt_dlp
 
 from streamshuttle.domain.model.youtube_url.youtube_url import YoutubeUrl
-from streamshuttle.infrastructure.external.ytdlp_options_factory import YtDlpOptionsFactory
+from streamshuttle.infrastructure.external.ytdlp_options_factory import (
+    FALLBACK_PLAYER_CLIENTS,
+    YtDlpOptionsFactory,
+)
 from streamshuttle.shared.exceptions import InvalidUrlError, YouTubeResolverError
 from streamshuttle.usecase.dto.resolved_url_result_dto import ResolvedUrlResultDto
+
+logger = logging.getLogger(__name__)
+
+# yt-dlpが結合済みフォーマットを見つけられなかったときのエラーメッセージ。
+# 認証エラーやネットワークエラーはクライアントを替えても解決しないため、
+# このメッセージの場合だけを再試行の条件にする
+_FORMAT_UNAVAILABLE_MESSAGE = "Requested format is not available"
 
 
 class YoutubeResolver:
@@ -102,6 +113,10 @@ class YoutubeResolver:
         hls=Trueの場合：
         - HLS形式を許可（bestフォーマット）
 
+        既定のプレイヤークライアントで「Requested format is not available」となった場合は、
+        同じフォーマット指定のままandroidクライアントで1回だけ再試行します。
+        それ以外のエラー、および再試行でも失敗した場合はそのまま送出します。
+
         Args:
             youtube_url: YouTube動画URL
             format_id: フォーマットID（オプショナル）
@@ -111,7 +126,7 @@ class YoutubeResolver:
             str: 解決済みの直接ストリームURL
 
         Raises:
-            yt_dlp.utils.DownloadError: URL解決に失敗した場合
+            yt_dlp.utils.DownloadError: URL解決に失敗した場合（再試行の失敗を含む）
             YouTubeResolverError: URLが取得できなかった場合
         """
         if format_id:
@@ -122,8 +137,50 @@ class YoutubeResolver:
             else:
                 format_spec = "best[protocol^=http][protocol!*=m3u8][ext=mp4]/best[ext=mp4]/best"
 
+        try:
+            return self._extract_stream_url(youtube_url, format_spec, hls)
+        except yt_dlp.utils.DownloadError as first_error:
+            if _FORMAT_UNAVAILABLE_MESSAGE not in str(first_error):
+                raise
+            logger.warning(
+                "既定のプレイヤークライアントでフォーマットを取得できなかったため"
+                "フォールバックします: url=%s format_id=%s clients=%s",
+                youtube_url,
+                format_id,
+                ",".join(FALLBACK_PLAYER_CLIENTS),
+            )
+            try:
+                return self._extract_stream_url(
+                    youtube_url, format_spec, hls, player_clients=FALLBACK_PLAYER_CLIENTS
+                )
+            except yt_dlp.utils.DownloadError as retry_error:
+                raise retry_error from first_error
+
+    def _extract_stream_url(
+        self,
+        youtube_url: str,
+        format_spec: str,
+        hls: bool,
+        player_clients: tuple[str, ...] | None = None,
+    ) -> str:
+        """
+        yt-dlpによる1回分の抽出を実行してストリームURLを返します（同期処理）
+
+        Args:
+            youtube_url: YouTube動画URL
+            format_spec: yt-dlpのフォーマット指定文字列
+            hls: HLS形式の使用
+            player_clients: 使用するプレイヤークライアント（Noneならyt-dlpの既定）
+
+        Returns:
+            str: 解決済みの直接ストリームURL
+
+        Raises:
+            yt_dlp.utils.DownloadError: 抽出に失敗した場合
+            YouTubeResolverError: URLが取得できなかった場合
+        """
         ydl_opts = YtDlpOptionsFactory.create_url_resolution_options(
-            format_spec=format_spec, hls=hls
+            format_spec=format_spec, hls=hls, player_clients=player_clients
         )
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
