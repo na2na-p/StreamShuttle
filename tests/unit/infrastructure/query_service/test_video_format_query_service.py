@@ -5,6 +5,7 @@ VideoFormatQueryServiceの正常系と異常系のテストを提供します。
 yt-dlpをモック化してテストします。
 """
 
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -357,3 +358,125 @@ async def test_video_format_query_service_does_not_filter_http_formats(query_ser
     assert formats[1].codec == "vp9"
     assert formats[2].format_id == "140"
     assert formats[2].codec == "unknown"
+
+
+def _fmt(format_id, acodec, vcodec, protocol="https"):
+    return {
+        "format_id": format_id,
+        "format_note": "note",
+        "acodec": acodec,
+        "vcodec": vcodec,
+        "protocol": protocol,
+        "url": f"https://example.com/{format_id}",
+    }
+
+
+FALLBACK_URL = "https://www.youtube.com/watch?v=CbdWElnmJIY"
+
+
+def _first_result_without_combined():
+    return {
+        "id": "CbdWElnmJIY",
+        "title": "T",
+        "thumbnail": "https://example.com/t.jpg",
+        "formats": [_fmt("137", "none", "avc1"), _fmt("140", "mp4a", "none")],
+    }
+
+
+async def test_get_available_formats_merges_combined_formats_from_fallback_client(
+    query_service,
+):
+    """結合済みフォーマットが無い場合、androidクライアントの結合済みフォーマットだけを末尾に追加する"""
+    # Arrange
+    second = {
+        "title": "Other",
+        "formats": [_fmt("sb0", "none", "avc1"), _fmt("18", "mp4a", "avc1")],
+    }
+
+    with patch.object(
+        query_service, "_extract_info", side_effect=[_first_result_without_combined(), second]
+    ) as mock_extract:
+        # Act
+        video_info, formats = await query_service.get_available_formats(FALLBACK_URL)
+
+    # Assert
+    assert [f.format_id for f in formats] == ["137", "140", "18"]
+    assert formats[-1].has_audio is True
+    assert formats[-1].has_video is True
+    assert video_info.title == "T"
+    assert mock_extract.call_count == 2
+    assert mock_extract.call_args_list[1].args == (FALLBACK_URL, ("android",))
+
+
+async def test_get_available_formats_does_not_fallback_when_combined_exists(query_service):
+    """結合済みフォーマットが既にある場合はフォールバックしない"""
+    # Arrange
+    first = {"formats": [_fmt("18", "mp4a", "avc1"), _fmt("137", "none", "avc1")]}
+
+    with patch.object(query_service, "_extract_info", return_value=first) as mock_extract:
+        # Act
+        _, formats = await query_service.get_available_formats(FALLBACK_URL)
+
+    # Assert
+    assert mock_extract.call_count == 1
+    assert [f.format_id for f in formats] == ["18", "137"]
+
+
+async def test_get_available_formats_excludes_hls_from_fallback(query_service):
+    """フォールバック結果のHLS(m3u8)フォーマットは追加しない"""
+    # Arrange
+    second = {"formats": [_fmt("91", "mp4a", "avc1", protocol="m3u8_native"), _fmt("18", "a", "v")]}
+
+    with patch.object(
+        query_service, "_extract_info", side_effect=[_first_result_without_combined(), second]
+    ):
+        # Act
+        _, formats = await query_service.get_available_formats(FALLBACK_URL)
+
+    # Assert
+    assert [f.format_id for f in formats] == ["137", "140", "18"]
+
+
+async def test_get_available_formats_skips_duplicate_format_id_from_fallback(query_service):
+    """フォールバック結果のformat_idが既存と重複する場合は追加しない"""
+    # Arrange
+    second = {"formats": [_fmt("137", "mp4a", "avc1"), _fmt("18", "mp4a", "avc1")]}
+
+    with patch.object(
+        query_service, "_extract_info", side_effect=[_first_result_without_combined(), second]
+    ):
+        # Act
+        _, formats = await query_service.get_available_formats(FALLBACK_URL)
+
+    # Assert
+    assert [f.format_id for f in formats] == ["137", "140", "18"]
+    assert formats[0].has_audio is False
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(
+            yt_dlp.utils.DownloadError("Requested format is not available"),
+            id="異常系: フォールバックがDownloadErrorでも元の一覧を返す",
+        ),
+        pytest.param(RuntimeError("boom"), id="異常系: フォールバックが一般例外でも元の一覧を返す"),
+    ],
+)
+async def test_get_available_formats_returns_original_when_fallback_fails(
+    query_service, error, caplog
+):
+    """フォールバックが失敗しても例外を出さず、元の一覧を返しWARNINGを記録する"""
+    # Arrange
+    with patch.object(
+        query_service, "_extract_info", side_effect=[_first_result_without_combined(), error]
+    ):
+        # Act
+        with caplog.at_level(logging.INFO):
+            _, formats = await query_service.get_available_formats(FALLBACK_URL)
+
+    # Assert
+    assert [f.format_id for f in formats] == ["137", "140"]
+    levels = [r.levelno for r in caplog.records]
+    assert levels.count(logging.WARNING) == 1
+    assert levels.count(logging.INFO) == 1

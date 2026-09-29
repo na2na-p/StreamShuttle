@@ -5,6 +5,7 @@ YoutubeResolverの正常系と異常系のテストを提供します。
 yt-dlpをモック化してテストします。
 """
 
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -401,3 +402,130 @@ def test_extract_ttl_from_url_returns_zero_for_past_expire(resolver):
 
     # Assert
     assert result == 0
+
+
+FORMAT_UNAVAILABLE_MESSAGE = (
+    "ERROR: [youtube] CbdWElnmJIY: Requested format is not available. "
+    "Use --list-formats for a list of available formats"
+)
+YOUTUBE_URL = "https://www.youtube.com/watch?v=CbdWElnmJIY"
+
+
+@pytest.mark.parametrize(
+    "format_id, hls",
+    [
+        pytest.param(None, False, id="正常系: format_id未指定・HLS無効でフォールバックする"),
+        pytest.param(None, True, id="正常系: format_id未指定・HLS有効でフォールバックする"),
+        pytest.param("18", False, id="正常系: format_id指定でもフォールバックする"),
+    ],
+)
+def test_resolve_url_sync_retries_with_fallback_client_when_format_unavailable(
+    resolver, format_id, hls
+):
+    """既定クライアントでフォーマットが見つからない場合、androidクライアントで1回だけ再試行する"""
+    # Arrange
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.side_effect = [
+            yt_dlp.utils.DownloadError(FORMAT_UNAVAILABLE_MESSAGE),
+            {"url": "https://example.com/v?expire=1"},
+        ]
+
+        # Act
+        result = resolver._resolve_url_sync(YOUTUBE_URL, format_id, hls)
+
+    # Assert
+    assert result == "https://example.com/v?expire=1"
+    assert mock_ydl.extract_info.call_count == 2
+    first_opts = mock_ydl_class.call_args_list[0].args[0]
+    second_opts = mock_ydl_class.call_args_list[1].args[0]
+    assert "player_client" not in first_opts["extractor_args"]["youtube"]
+    assert second_opts["extractor_args"]["youtube"]["player_client"] == ["android"]
+    assert first_opts["format"] == second_opts["format"]
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        pytest.param(
+            "ERROR: [youtube] xxx: Private video. Sign in if you've been granted access to "
+            "this video",
+            id="異常系: 非公開動画では再試行しない",
+        ),
+        pytest.param(
+            "ERROR: Unable to download API page: <urlopen error timed out>",
+            id="異常系: ネットワークエラーでは再試行しない",
+        ),
+    ],
+)
+def test_resolve_url_sync_does_not_retry_on_other_download_error(resolver, message):
+    """フォーマット未検出以外のDownloadErrorでは再試行せずそのまま送出する"""
+    # Arrange
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.side_effect = yt_dlp.utils.DownloadError(message)
+
+        # Act & Assert
+        with pytest.raises(yt_dlp.utils.DownloadError):
+            resolver._resolve_url_sync(YOUTUBE_URL)
+
+    assert mock_ydl.extract_info.call_count == 1
+
+
+def test_resolve_url_sync_raises_when_fallback_also_fails(resolver):
+    """フォールバックも失敗した場合、再試行側のエラーを元のエラーに連鎖させて送出する"""
+    # Arrange
+    first_error = yt_dlp.utils.DownloadError(FORMAT_UNAVAILABLE_MESSAGE)
+    second_error = yt_dlp.utils.DownloadError(FORMAT_UNAVAILABLE_MESSAGE)
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.side_effect = [first_error, second_error]
+
+        # Act & Assert
+        with pytest.raises(yt_dlp.utils.DownloadError) as exc_info:
+            resolver._resolve_url_sync(YOUTUBE_URL)
+
+    assert mock_ydl.extract_info.call_count == 2
+    assert exc_info.value is second_error
+    assert exc_info.value.__cause__ is first_error
+
+
+def test_resolve_url_sync_logs_warning_on_fallback(resolver, caplog):
+    """フォールバック時にandroidクライアント名を含むWARNINGを1件だけ出力する"""
+    # Arrange
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.side_effect = [
+            yt_dlp.utils.DownloadError(FORMAT_UNAVAILABLE_MESSAGE),
+            {"url": "https://example.com/v?expire=1"},
+        ]
+
+        # Act
+        with caplog.at_level(logging.WARNING):
+            resolver._resolve_url_sync(YOUTUBE_URL, "18")
+
+    # Assert
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "android" in warnings[0].getMessage()
+    assert YOUTUBE_URL in warnings[0].getMessage()
+    assert "18" in warnings[0].getMessage()
+
+
+async def test_resolve_url_returns_dto_after_fallback(resolver):
+    """フォールバック経由でもresolve_url()がResolvedUrlResultDtoを返す"""
+    # Arrange
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.side_effect = [
+            yt_dlp.utils.DownloadError(FORMAT_UNAVAILABLE_MESSAGE),
+            {"url": "https://example.com/v?expire=4102444800"},
+        ]
+
+        # Act
+        result = await resolver.resolve_url(YOUTUBE_URL)
+
+    # Assert
+    assert isinstance(result, ResolvedUrlResultDto)
+    assert result.resolved_url == "https://example.com/v?expire=4102444800"
+    assert mock_ydl.extract_info.call_count == 2
