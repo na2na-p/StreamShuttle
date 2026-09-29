@@ -16,13 +16,14 @@ class ResolveYoutubeUrlUseCase:
 
     YouTube URLをストリームURLに解決し、結果をキャッシュに保存します。
     既にキャッシュが存在し有効期限内の場合は、キャッシュから返します。
+    format_idが指定された場合はキャッシュを読み書きせず、常にYouTubeから解決します。
 
     このUseCaseは以下のフローで動作します:
     1. YouTube URLからvideo_idを抽出
-    2. Repositoryでキャッシュに該当のvideo_idが存在し有効期限内かチェック
-    3. キャッシュが有効な場合はキャッシュから返す
-    4. キャッシュがない/期限切れの場合はYouTubeから解決
-    5. 解決したURLをキャッシュに保存
+    2. format_idが指定されている場合はキャッシュを使わずYouTubeから解決して返す
+    3. Repositoryでキャッシュに該当のvideo_idが存在し有効期限内かチェック
+    4. キャッシュが有効な場合はキャッシュから返す
+    5. キャッシュがない/期限切れの場合はYouTubeから解決し、キャッシュに保存
     """
 
     def __init__(
@@ -48,7 +49,7 @@ class ResolveYoutubeUrlUseCase:
 
         Args:
             youtube_url: YouTube動画URL（YoutubeUrl ValueObject）
-            format_id: フォーマットID（オプショナル）
+            format_id: フォーマットID（オプショナル）。指定時はキャッシュを読み書きしない
             hls: HLS形式の使用（デフォルト: False）
 
         Returns:
@@ -58,10 +59,17 @@ class ResolveYoutubeUrlUseCase:
             InvalidVideoIdError: video_idの抽出に失敗した場合
             InvalidUrlException: 無効なURLが指定された場合
             YouTubeResolverException: YouTube APIへのアクセスに失敗した場合
-            CacheException: キャッシュ操作に失敗した場合
+            CacheException: キャッシュ操作に失敗した場合（format_id未指定時のみ）
             HlsNotSupportedError: HLS形式が拒否された場合
         """
         video_id = youtube_url.extract_video_id()
+
+        # ストリームURLキャッシュは「動画の再生URL」を動画ID単位で保持する。
+        # フォーマット固有のURL（映像のみ等）を保存・参照すると、/resolve 等が
+        # 音声なしのURLを返したり、指定フォーマットと異なるURLを返したりするため使わない。
+        if format_id:
+            result = await self._youtube_resolver.resolve_url(str(youtube_url), format_id, hls)
+            return result.resolved_url
 
         cached = await self._repository.find_by_video_id(str(video_id), hls)
 
