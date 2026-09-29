@@ -48,9 +48,11 @@ class YtDlpOptionsFactory:
             dict: yt-dlpオプション辞書
         """
         options = YtDlpOptionsFactory.create_base_options()
+        # 一覧取得ではフォーマット選択は不要。"best"だと音声+映像の結合済みフォーマットが
+        # 存在しない動画で選択に失敗し、一覧自体が取得できなくなるため"all"を指定する
         options.update(
             {
-                "format": "best",
+                "format": "all",
                 "skip_download": True,
             }
         )

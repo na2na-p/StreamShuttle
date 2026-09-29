@@ -109,7 +109,7 @@ class TestYtDlpOptionsFactory:
     @pytest.mark.parametrize(
         "key, expected_value",
         [
-            pytest.param("format", "best", id="正常系: formatがbestである"),
+            pytest.param("format", "all", id="正常系: 選択で失敗しないようformatがallである"),
             pytest.param("skip_download", True, id="正常系: skip_downloadがTrueである"),
         ],
     )
