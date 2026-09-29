@@ -8,9 +8,6 @@ DIコンテナモジュール
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
 from streamshuttle.infrastructure.external.twitch_resolver import TwitchResolver
 from streamshuttle.infrastructure.external.youtube_resolver import YoutubeResolver
-from streamshuttle.infrastructure.query_service.format_url_query_service import (
-    FormatUrlQueryService,
-)
 from streamshuttle.infrastructure.query_service.playlist_cache_query_service import (
     PlaylistCacheQueryService,
 )
@@ -44,12 +41,6 @@ from streamshuttle.usecase.command.resolve_twitch_url_usecase import (
 )
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import (
     ResolveYoutubeUrlUseCase,
-)
-from streamshuttle.usecase.facade.get_or_resolve_stream_url_usecase import (
-    GetOrResolveStreamUrlUseCase,
-)
-from streamshuttle.usecase.query.get_cached_format_url_usecase import (
-    GetCachedFormatUrlUseCase,
 )
 from streamshuttle.usecase.query.get_cached_stream_url_usecase import (
     GetCachedStreamUrlUseCase,
@@ -147,18 +138,6 @@ def get_video_formats_cache_query_service() -> VideoFormatsCacheQueryService:
         VideoFormatsCacheQueryService: 初期化済みのQueryServiceインスタンス
     """
     return VideoFormatsCacheQueryService(redis_dao=get_redis_dao())
-
-
-def get_format_url_query_service() -> FormatUrlQueryService:
-    """
-    FormatUrlQueryServiceインスタンスを生成
-
-    FormatUrlQueryServiceに必要なRedisDaoを注入して生成します。
-
-    Returns:
-        FormatUrlQueryService: 初期化済みのQueryServiceインスタンス
-    """
-    return FormatUrlQueryService(redis_dao=get_redis_dao())
 
 
 def get_playlist_query_service() -> PlaylistQueryService:
@@ -267,33 +246,6 @@ def get_video_formats_use_case() -> GetVideoFormatsUseCase:
         query_service=get_video_format_query_service(),
         repository=get_video_formats_repository(),
         cache_query_service=get_video_formats_cache_query_service(),
-    )
-
-
-def get_cached_format_url_use_case() -> GetCachedFormatUrlUseCase:
-    """
-    GetCachedFormatUrlUseCaseインスタンスを生成
-
-    必要な依存関係を注入して生成します。
-
-    Returns:
-        GetCachedFormatUrlUseCase: 初期化済みのUseCaseインスタンス
-    """
-    return GetCachedFormatUrlUseCase(query_service=get_format_url_query_service())
-
-
-def get_or_resolve_stream_url_use_case() -> GetOrResolveStreamUrlUseCase:
-    """
-    GetOrResolveStreamUrlUseCaseインスタンスを生成
-
-    キャッシュ取得とyt-dlp解決を統合したファサードUseCaseを生成します。
-
-    Returns:
-        GetOrResolveStreamUrlUseCase: 初期化済みのUseCaseインスタンス
-    """
-    return GetOrResolveStreamUrlUseCase(
-        cached_url_use_case=get_cached_format_url_use_case(),
-        resolve_use_case=get_resolve_youtube_url_use_case(),
     )
 
 
