@@ -171,14 +171,13 @@ class TestResolveYoutubeUrlUseCase:
         mock_youtube_resolver: AsyncMock,
         mock_repository: AsyncMock,
     ) -> None:
-        """format_idが指定された場合、YoutubeResolverに正しく渡されることをテスト"""
+        """format_idが指定された場合、キャッシュを使わずYoutubeResolverで解決することをテスト"""
         # Arrange
         youtube_url_str = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         youtube_url = YoutubeUrl(_value=youtube_url_str)
         format_id = "137"
         resolved_url = "https://example.com/stream.mp4"
 
-        mock_repository.find_by_video_id.return_value = None
         mock_youtube_resolver.resolve_url.return_value = ResolvedUrlResultDto(
             resolved_url=resolved_url, ttl_seconds=3600
         )
@@ -189,4 +188,73 @@ class TestResolveYoutubeUrlUseCase:
         # Assert
         assert result == resolved_url
         mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url_str, format_id, False)
-        mock_repository.save.assert_called_once()
+        mock_repository.find_by_video_id.assert_not_called()
+        mock_repository.save.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "format_id, hls, has_valid_cache, expect_cache_used",
+        [
+            pytest.param(
+                "137",
+                False,
+                True,
+                False,
+                id="正常系: format_id指定時は有効なキャッシュがあってもresolverで解決する",
+            ),
+            pytest.param(
+                "137",
+                True,
+                False,
+                False,
+                id="正常系: format_id指定かつhls=Trueでもキャッシュを使わない",
+            ),
+            pytest.param(
+                None,
+                False,
+                False,
+                True,
+                id="正常系: format_id未指定時は従来どおりキャッシュを読み書きする",
+            ),
+        ],
+    )
+    async def test_execute_stream_url_cache_usage_by_format_id(
+        self,
+        usecase: ResolveYoutubeUrlUseCase,
+        mock_youtube_resolver: AsyncMock,
+        mock_repository: AsyncMock,
+        format_id: str | None,
+        hls: bool,
+        has_valid_cache: bool,
+        expect_cache_used: bool,
+    ) -> None:
+        """format_idの有無によりストリームURLキャッシュの読み書きが切り替わることをテスト"""
+        # Arrange
+        youtube_url_str = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        youtube_url = YoutubeUrl(_value=youtube_url_str)
+        video_id = "dQw4w9WgXcQ"
+        resolved_url = "https://example.com/resolved.mp4"
+
+        if has_valid_cache:
+            mock_repository.find_by_video_id.return_value = StreamUrl.create(
+                video_id=video_id,
+                resolved_url="https://example.com/cached-stream.m3u8",
+                ttl_seconds=3600,
+            )
+        else:
+            mock_repository.find_by_video_id.return_value = None
+        mock_youtube_resolver.resolve_url.return_value = ResolvedUrlResultDto(
+            resolved_url=resolved_url, ttl_seconds=3600
+        )
+
+        # Act
+        result = await usecase.execute(youtube_url, format_id, hls)
+
+        # Assert
+        assert result == resolved_url
+        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url_str, format_id, hls)
+        if expect_cache_used:
+            mock_repository.find_by_video_id.assert_called_once_with(video_id, hls)
+            mock_repository.save.assert_called_once()
+        else:
+            mock_repository.find_by_video_id.assert_not_called()
+            mock_repository.save.assert_not_called()
