@@ -11,9 +11,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
 from streamshuttle.di.container import (
-    get_or_resolve_stream_url_use_case,
+    get_resolve_youtube_url_use_case,
     get_video_formats_use_case,
 )
+from streamshuttle.domain.model.youtube_url import YoutubeUrl
 from streamshuttle.handler.response.formats_response import FormatsResponse
 from streamshuttle.shared.config import config
 from streamshuttle.shared.csrf_token import generate_csrf_token, verify_csrf_token
@@ -25,8 +26,8 @@ from streamshuttle.shared.exceptions import (
 from streamshuttle.shared.rate_limiter import limiter
 from streamshuttle.shared.validators.referer_validator import RefererValidator
 from streamshuttle.shared.validators.url_validator import UrlValidator
-from streamshuttle.usecase.facade.get_or_resolve_stream_url_usecase import (
-    GetOrResolveStreamUrlUseCase,
+from streamshuttle.usecase.command.resolve_youtube_url_usecase import (
+    ResolveYoutubeUrlUseCase,
 )
 from streamshuttle.usecase.query.get_video_formats_usecase import GetVideoFormatsUseCase
 
@@ -95,7 +96,7 @@ async def download(
     url: str = Query(..., description="YouTube動画URL"),
     csrf_token: str = Query(..., description="CSRFトークン"),
     format_id: str | None = Query(None, description="フォーマットID（オプショナル）"),
-    use_case: GetOrResolveStreamUrlUseCase = Depends(get_or_resolve_stream_url_use_case),
+    use_case: ResolveYoutubeUrlUseCase = Depends(get_resolve_youtube_url_use_case),
 ) -> RedirectResponse:
     """
     ダウンロード用のYouTube URLを解決し、ストリームURLへリダイレクトします
@@ -107,7 +108,7 @@ async def download(
         url: YouTube動画URL
         csrf_token: CSRFトークン
         format_id: フォーマットID（オプショナル）
-        use_case: GetOrResolveStreamUrlUseCase（DIコンテナから注入）
+        use_case: ResolveYoutubeUrlUseCase（DIコンテナから注入）
 
     Returns:
         RedirectResponse: 解決済みストリームURLへの307リダイレクト
@@ -130,7 +131,8 @@ async def download(
         url_validator.validate_length(url)
 
         # ビジネスロジック（UseCaseに委譲）
-        resolved_url = await use_case.execute(url, format_id)
+        youtube_url = YoutubeUrl(_value=url)
+        resolved_url = await use_case.execute(youtube_url, format_id)
 
         # レスポンス生成
         return RedirectResponse(url=resolved_url, status_code=307)
