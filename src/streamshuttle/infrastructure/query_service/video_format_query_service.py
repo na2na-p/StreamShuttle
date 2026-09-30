@@ -137,7 +137,8 @@ class VideoFormatQueryService:
         """
         yt-dlpの動画情報からVideoFormatDtoのリストを生成します
 
-        必須フィールド（format_id, url）が無いフォーマットとHLS(m3u8)は除外します。
+        必須フィールド（format_id, url）が無いフォーマット、HLS(m3u8)、
+        ストーリーボード(mhtml)は除外します。
 
         Args:
             info: yt-dlpから取得した動画情報辞書
@@ -152,6 +153,9 @@ class VideoFormatQueryService:
 
             protocol = fmt.get("protocol", "")
             if protocol in ("m3u8", "m3u8_native", "m3u8_native+http"):
+                continue
+
+            if protocol == "mhtml":
                 continue
 
             acodec = fmt.get("acodec", "none")

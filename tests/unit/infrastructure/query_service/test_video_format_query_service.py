@@ -232,6 +232,50 @@ async def test_video_format_query_service_filters_out_hls_formats(query_service)
     assert formats[0].codec == "h264"
 
 
+async def test_video_format_query_service_filters_out_storyboard_formats(query_service):
+    """
+    正常系: VideoFormatQueryService.get_available_formats()がストーリーボード
+    (protocolがmhtmlのシークバー用スプライト画像)を除外することを確認
+
+    Arrange: yt-dlpの_extract_infoをモックしてストーリーボードと通常フォーマットを返す
+    Act: VideoFormatQueryService.get_available_formats()を呼び出す
+    Assert: ストーリーボードが除外され、通常フォーマットのみが返されることを確認
+    """
+    # Arrange
+    youtube_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    mock_info = {
+        "formats": [
+            {
+                "format_id": storyboard_id,
+                "format_note": "storyboard",
+                "vcodec": "none",
+                "acodec": "none",
+                "ext": "mhtml",
+                "url": f"https://example.com/{storyboard_id}/$M.jpg",
+                "protocol": "mhtml",
+            }
+            for storyboard_id in ("sb0", "sb1")
+        ]
+        + [
+            {
+                "format_id": "18",
+                "format_note": "360p",
+                "vcodec": "avc1",
+                "acodec": "mp4a",
+                "url": "https://example.com/video.mp4",
+                "protocol": "https",
+            },
+        ]
+    }
+
+    with patch.object(query_service, "_extract_info", return_value=mock_info):
+        # Act
+        _, formats = await query_service.get_available_formats(youtube_url=youtube_url)
+
+    # Assert
+    assert [f.format_id for f in formats] == ["18"]
+
+
 async def test_video_format_query_service_sets_has_audio_and_has_video_flags(query_service):
     """
     正常系: VideoFormatQueryService.get_available_formats()がacodec/vcodecに基づいて
@@ -426,6 +470,23 @@ async def test_get_available_formats_excludes_hls_from_fallback(query_service):
     """フォールバック結果のHLS(m3u8)フォーマットは追加しない"""
     # Arrange
     second = {"formats": [_fmt("91", "mp4a", "avc1", protocol="m3u8_native"), _fmt("18", "a", "v")]}
+
+    with patch.object(
+        query_service, "_extract_info", side_effect=[_first_result_without_combined(), second]
+    ):
+        # Act
+        _, formats = await query_service.get_available_formats(FALLBACK_URL)
+
+    # Assert
+    assert [f.format_id for f in formats] == ["137", "140", "18"]
+
+
+async def test_get_available_formats_excludes_storyboard_from_fallback(query_service):
+    """フォールバック結果のストーリーボード(mhtml)フォーマットは追加しない"""
+    # Arrange
+    second = {
+        "formats": [_fmt("sb0", "mp4a", "avc1", protocol="mhtml"), _fmt("18", "mp4a", "avc1")]
+    }
 
     with patch.object(
         query_service, "_extract_info", side_effect=[_first_result_without_combined(), second]
