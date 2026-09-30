@@ -13,6 +13,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const videoThumbnail = document.getElementById('video-thumbnail');
   const videoTitle = document.getElementById('video-title');
   const videoId = document.getElementById('video-id');
+  const externalUrlContainer = document.getElementById('external-url-container');
+  const externalUrlInput = document.getElementById('external-url-input');
+  const copyExternalUrlBtn = document.getElementById('copy-external-url-btn');
+  const copyStatus = document.getElementById('copy-status');
 
   // 状態管理
   let selectedFormat = null;
@@ -32,6 +36,8 @@ document.addEventListener('DOMContentLoaded', function() {
     formatsContainer.classList.add('hidden');
     videoInfoContainer.classList.add('hidden');
     downloadContainer.classList.add('hidden');
+    externalUrlContainer.classList.add('hidden');
+    copyStatus.classList.add('hidden');
     fetchFormatsBtn.disabled = true;
     fetchFormatsBtn.textContent = '取得中...';
 
@@ -68,6 +74,11 @@ document.addEventListener('DOMContentLoaded', function() {
     videoTitle.textContent = videoInfo.title;
     videoId.textContent = `動画ID: ${videoInfo.video_id}`;
     videoInfoContainer.classList.remove('hidden');
+
+    // ユーザー入力URLではなくvideo_idから組み立て、余計なクエリを外部プレイヤー用URLに持ち込まない
+    const watchUrl = `https://www.youtube.com/watch?v=${videoInfo.video_id}`;
+    externalUrlInput.value = `${window.location.origin}/resolve?url=${encodeURIComponent(watchUrl)}`;
+    externalUrlContainer.classList.remove('hidden');
 
     formatsList.innerHTML = '';
     selectedFormat = null;
@@ -116,6 +127,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadUrl = `/download?url=${encodeURIComponent(currentUrl)}&format_id=${encodeURIComponent(selectedFormat)}&csrf_token=${encodeURIComponent(csrfToken)}`;
     window.open(downloadUrl, '_blank');
   });
+
+  // 外部プレイヤー用URLのコピーボタンのクリックイベント
+  copyExternalUrlBtn.addEventListener('click', async function() {
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(externalUrlInput.value);
+        showCopyStatus('URLをコピーしました');
+        return;
+      } catch (error) {
+        // 権限拒否などの場合は手動コピーへフォールバックする
+      }
+    }
+
+    externalUrlInput.focus();
+    externalUrlInput.select();
+    showCopyStatus('自動でコピーできませんでした。選択されたURLを手動でコピーしてください');
+  });
+
+  function showCopyStatus(message) {
+    copyStatus.textContent = message;
+    copyStatus.classList.remove('hidden');
+  }
 
   // エラーメッセージを表示
   function showError(message) {

@@ -28,6 +28,14 @@
     </div>
   </div>
 
+  <div id="external-url-container" class="hidden">
+    <label for="external-url-input">外部プレイヤー用URL:</label>
+    <input type="url" id="external-url-input" readonly>
+    <button type="button" id="copy-external-url-btn">URLをコピー</button>
+    <p class="notice">このURLはVLCやmpvなどの外部プレイヤーに貼り付けて使えます。再生のたびにStreamShuttleがURLを解決するため、有効期限はありません。フォーマットは選べず、音声と映像が一体のMP4（多くの場合360p）になります。</p>
+    <p id="copy-status" class="notice hidden" aria-live="polite"></p>
+  </div>
+
   <div id="formats-container" class="hidden">
     <h2>利用可能なフォーマット:</h2>
 

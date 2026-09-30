@@ -93,6 +93,32 @@ def test_root_endpoint(client):
     assert "StreamShuttle" in html_content
 
 
+@pytest.mark.parametrize(
+    "expected_fragment",
+    [
+        pytest.param(
+            'id="external-url-container"', id="正常系: 外部プレイヤー用URLのコンテナが含まれる"
+        ),
+        pytest.param('id="external-url-input"', id="正常系: 外部プレイヤー用URLの入力欄が含まれる"),
+        pytest.param('id="copy-external-url-btn"', id="正常系: URLコピーボタンが含まれる"),
+        pytest.param('id="copy-status"', id="正常系: コピー結果の表示要素が含まれる"),
+        pytest.param("有効期限はありません", id="正常系: 期限がない旨の注意書きが含まれる"),
+    ],
+)
+def test_root_endpoint_includes_external_player_url_copy_ui(client, expected_fragment):
+    """
+    ルートページに外部プレイヤー用URLのコピーUIが含まれることを確認
+
+    Args:
+        client: TestClientインスタンス
+        expected_fragment: HTMLに含まれるべき文字列
+    """
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert expected_fragment in response.text
+
+
 def test_health_check(client):
     """
     ヘルスチェックエンドポイント（GET /healthz）が正常に動作することを確認
