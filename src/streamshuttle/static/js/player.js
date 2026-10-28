@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const playlistMeta = document.getElementById('playlist-meta');
   const videoPlayer = document.getElementById('video-player');
   const audioPlayer = document.getElementById('audio-player');
+  const audioArtwork = document.getElementById('audio-artwork');
   const nowPlaying = document.getElementById('now-playing');
   const prevBtn = document.getElementById('prev-btn');
   const nextBtn = document.getElementById('next-btn');
@@ -238,6 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const next = audioOnlyToggle.checked ? audioPlayer : videoPlayer;
     videoPlayer.classList.toggle('hidden', next !== videoPlayer);
     audioPlayer.classList.toggle('hidden', next !== audioPlayer);
+    updateArtworkVisibility();
 
     if (next === media) {
       return;
@@ -304,6 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     orderPos = Math.max(playOrder.indexOf(index), 0);
     highlightCurrent(index);
+    updateArtwork(item);
     hideError();
     nowPlaying.textContent = `読み込み中: ${item.title}`;
 
@@ -431,6 +434,21 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (error) {
       // ライブ配信など長さが確定しない場合は位置情報を設定しない
     }
+  }
+
+  // 音声のみモードで映像の代わりに表示するサムネイルを更新する
+  function updateArtwork(item) {
+    if (item.thumbnail_url) {
+      audioArtwork.src = item.thumbnail_url;
+    } else {
+      audioArtwork.removeAttribute('src');
+    }
+    updateArtworkVisibility();
+  }
+
+  function updateArtworkVisibility() {
+    const visible = audioOnlyToggle.checked && audioArtwork.hasAttribute('src');
+    audioArtwork.classList.toggle('hidden', !visible);
   }
 
   // 再生中の項目を一覧上で強調する
