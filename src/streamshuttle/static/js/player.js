@@ -229,9 +229,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // 1曲リピート時は<video>のloopで同じ動画を繰り返す（endedが発生しないため次へ進まない）
   // 前へ/次へボタンでの手動移動は従来どおり行える
   function applyRepeatMode() {
-    const loop = repeatMode.value === 'one';
+    const loop = currentRepeatMode() === 'one';
     videoPlayer.loop = loop;
     audioPlayer.loop = loop;
+  }
+
+  function currentRepeatMode() {
+    const checked = repeatMode.querySelector('input[name="repeat-mode"]:checked');
+    return checked ? checked.value : 'all';
   }
 
   // 「音声のみ」の切り替え。再生中のソース・再生位置・再生状態を引き継いで要素を入れ替える
@@ -285,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const nextPos = orderPos + delta;
 
     if (nextPos < 0 || nextPos >= playOrder.length) {
-      if (repeatMode.value === 'off') {
+      if (currentRepeatMode() === 'off') {
         nowPlaying.textContent = '再生を終了しました';
         return;
       }

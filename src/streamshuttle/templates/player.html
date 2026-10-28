@@ -42,14 +42,23 @@
         <input type="checkbox" id="audio-only-toggle">
         音声のみ
       </label>
-      <label class="toggle">
-        リピート
-        <select id="repeat-mode">
-          <option value="off">なし</option>
-          <option value="all" selected>全曲</option>
-          <option value="one">1曲</option>
-        </select>
-      </label>
+      <div class="repeat-control">
+        <span class="repeat-label" id="repeat-label">リピート</span>
+        <div id="repeat-mode" class="segmented" role="radiogroup" aria-labelledby="repeat-label">
+          <label>
+            <input type="radio" name="repeat-mode" value="off">
+            <span>なし</span>
+          </label>
+          <label>
+            <input type="radio" name="repeat-mode" value="all" checked>
+            <span>全曲</span>
+          </label>
+          <label>
+            <input type="radio" name="repeat-mode" value="one">
+            <span>1曲</span>
+          </label>
+        </div>
+      </div>
     </div>
 
     <ol id="playlist-items" class="playlist-items"></ol>
