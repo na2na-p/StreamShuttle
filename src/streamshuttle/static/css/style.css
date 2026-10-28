@@ -366,6 +366,30 @@ button:disabled {
   aspect-ratio: 16 / 9;
 }
 
+.audio-artwork {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  background-color: #000;
+  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.audio-artwork.hidden {
+  display: none;
+}
+
+.audio-player {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.audio-player.hidden {
+  display: none;
+}
+
 .now-playing {
   margin-top: 0.75rem;
   font-weight: 600;
@@ -388,6 +412,59 @@ button:disabled {
   font-weight: 400;
   color: #555;
   cursor: pointer;
+}
+
+/* リピート切り替え（セグメントコントロール） */
+.repeat-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #555;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid #3498db;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.segmented label {
+  position: relative;
+  cursor: pointer;
+}
+
+.segmented label + label {
+  border-left: 1px solid #3498db;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented span {
+  display: block;
+  padding: 0.45rem 1rem;
+  color: #3498db;
+  font-size: 0.95rem;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.segmented label:hover span {
+  background-color: #eaf4fb;
+}
+
+.segmented input:checked + span {
+  background-color: #3498db;
+  color: white;
+}
+
+.segmented input:focus-visible + span {
+  outline: 2px solid #2980b9;
+  outline-offset: -4px;
+  border-radius: 999px;
 }
 
 /* プレイリスト一覧 */
