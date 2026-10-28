@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const prevBtn = document.getElementById('prev-btn');
   const nextBtn = document.getElementById('next-btn');
   const shuffleToggle = document.getElementById('shuffle-toggle');
-  const repeatToggle = document.getElementById('repeat-toggle');
+  const repeatMode = document.getElementById('repeat-mode');
   const playlistItems = document.getElementById('playlist-items');
 
   // 状態管理
@@ -30,8 +30,11 @@ document.addEventListener('DOMContentLoaded', function() {
   prevBtn.addEventListener('click', () => step(-1));
   nextBtn.addEventListener('click', () => step(1));
   shuffleToggle.addEventListener('change', rebuildPlayOrder);
+  repeatMode.addEventListener('change', applyRepeatMode);
   videoPlayer.addEventListener('ended', () => step(1));
   videoPlayer.addEventListener('error', onPlaybackError);
+  // リロード時にブラウザが復元したフォーム値も反映する
+  applyRepeatMode();
 
   // プレイリストを読み込む
   async function loadPlaylist() {
@@ -179,6 +182,12 @@ document.addEventListener('DOMContentLoaded', function() {
     buildPlayOrder(playOrder[orderPos] ?? 0);
   }
 
+  // 1曲リピート時は<video>のloopで同じ動画を繰り返す（endedが発生しないため次へ進まない）
+  // 前へ/次へボタンでの手動移動は従来どおり行える
+  function applyRepeatMode() {
+    videoPlayer.loop = repeatMode.value === 'one';
+  }
+
   // Fisher-Yatesシャッフル
   function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -196,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const nextPos = orderPos + delta;
 
     if (nextPos < 0 || nextPos >= playOrder.length) {
-      if (!repeatToggle.checked) {
+      if (repeatMode.value === 'off') {
         nowPlaying.textContent = '再生を終了しました';
         return;
       }
