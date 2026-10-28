@@ -1,6 +1,10 @@
 // YouTubeプレイリストプレイヤー
 // GET /playlist で取得した動画一覧を、GET /playlist/stream で解決した
 // ストリームURLを使って順番に再生する。
+//
+// Androidのブラウザは画面オフ・バックグラウンド時に映像を含む<video>を一時停止するため、
+// 「音声のみ」では同じストリームを<audio>で再生し、Media Session APIで
+// ロック画面・通知からの操作に対応する。
 document.addEventListener('DOMContentLoaded', function() {
   // DOM要素の取得
   const urlInput = document.getElementById('playlist-url-input');
@@ -11,11 +15,13 @@ document.addEventListener('DOMContentLoaded', function() {
   const playlistTitle = document.getElementById('playlist-title');
   const playlistMeta = document.getElementById('playlist-meta');
   const videoPlayer = document.getElementById('video-player');
+  const audioPlayer = document.getElementById('audio-player');
   const nowPlaying = document.getElementById('now-playing');
   const prevBtn = document.getElementById('prev-btn');
   const nextBtn = document.getElementById('next-btn');
   const shuffleToggle = document.getElementById('shuffle-toggle');
   const repeatMode = document.getElementById('repeat-mode');
+  const audioOnlyToggle = document.getElementById('audio-only-toggle');
   const playlistItems = document.getElementById('playlist-items');
 
   // 状態管理
@@ -25,16 +31,52 @@ document.addEventListener('DOMContentLoaded', function() {
   let failureCount = 0;  // 連続再生失敗数（全滅時の無限スキップ防止）
   let loadToken = 0;     // 解決結果の到着順による表示ズレを防ぐトークン
   let reportedErrorSrc = null;  // 失敗を通知済みのソース（同一動画の二重スキップ防止）
+  let playlistInfo = null;      // 読み込み中のプレイリスト情報（Media Sessionのメタデータ用）
+  let media = videoPlayer;      // 再生に使用中のメディア要素（<video>または<audio>）
 
   loadBtn.addEventListener('click', loadPlaylist);
   prevBtn.addEventListener('click', () => step(-1));
   nextBtn.addEventListener('click', () => step(1));
   shuffleToggle.addEventListener('change', rebuildPlayOrder);
   repeatMode.addEventListener('change', applyRepeatMode);
-  videoPlayer.addEventListener('ended', () => step(1));
-  videoPlayer.addEventListener('error', onPlaybackError);
+  audioOnlyToggle.addEventListener('change', applyAudioOnly);
+  [videoPlayer, audioPlayer].forEach((element) => {
+    // 切り替えで使われなくなった側の要素のイベントは無視する
+    element.addEventListener('ended', () => {
+      if (element === media) {
+        step(1);
+      }
+    });
+    element.addEventListener('error', () => {
+      if (element === media) {
+        onPlaybackError();
+      }
+    });
+    element.addEventListener('play', () => {
+      if (element === media) {
+        setPlaybackState('playing');
+      }
+    });
+    element.addEventListener('pause', () => {
+      if (element === media) {
+        setPlaybackState('paused');
+      }
+    });
+    element.addEventListener('loadedmetadata', () => {
+      if (element === media) {
+        updatePositionState();
+      }
+    });
+    element.addEventListener('seeked', () => {
+      if (element === media) {
+        updatePositionState();
+      }
+    });
+  });
+  setupMediaSession();
   // リロード時にブラウザが復元したフォーム値も反映する
   applyRepeatMode();
+  applyAudioOnly();
 
   // プレイリストを読み込む
   async function loadPlaylist() {
@@ -55,6 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const data = await parseResponse(response);
 
       items = data.items;
+      playlistInfo = data.playlist_info;
       playlistTitle.textContent = data.playlist_info.title;
       playlistMeta.textContent = buildMetaText(data.playlist_info);
 
@@ -185,7 +228,42 @@ document.addEventListener('DOMContentLoaded', function() {
   // 1曲リピート時は<video>のloopで同じ動画を繰り返す（endedが発生しないため次へ進まない）
   // 前へ/次へボタンでの手動移動は従来どおり行える
   function applyRepeatMode() {
-    videoPlayer.loop = repeatMode.value === 'one';
+    const loop = repeatMode.value === 'one';
+    videoPlayer.loop = loop;
+    audioPlayer.loop = loop;
+  }
+
+  // 「音声のみ」の切り替え。再生中のソース・再生位置・再生状態を引き継いで要素を入れ替える
+  function applyAudioOnly() {
+    const next = audioOnlyToggle.checked ? audioPlayer : videoPlayer;
+    videoPlayer.classList.toggle('hidden', next !== videoPlayer);
+    audioPlayer.classList.toggle('hidden', next !== audioPlayer);
+
+    if (next === media) {
+      return;
+    }
+
+    const previous = media;
+    const src = previous.getAttribute('src');
+    const currentTime = previous.currentTime;
+    const wasPlaying = !previous.paused;
+
+    media = next;
+    previous.pause();
+    previous.removeAttribute('src');
+    previous.load();
+
+    if (!src) {
+      return;
+    }
+
+    next.addEventListener('loadedmetadata', () => {
+      next.currentTime = currentTime;
+    }, { once: true });
+    next.src = src;
+    if (wasPlaying) {
+      next.play().catch(() => {});
+    }
   }
 
   // Fisher-Yatesシャッフル
@@ -240,8 +318,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      videoPlayer.src = data.stream_url;
-      await videoPlayer.play();
+      media.src = data.stream_url;
+      updateMediaMetadata(item);
+      await media.play();
 
       failureCount = 0;
       nowPlaying.textContent = `再生中: ${item.title}`;
@@ -262,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // <video>要素側で発生した再生エラーを処理する
   function onPlaybackError() {
-    if (!videoPlayer.src) {
+    if (!media.src) {
       return;
     }
 
@@ -275,10 +354,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // 読み込み失敗時はplay()のPromise棄却と<video>のerrorイベントの両方が発生しうるため、
   // 同一ソースに対する2回目以降の通知は無視して二重スキップを防ぐ。
   function reportFailure(message) {
-    if (reportedErrorSrc === videoPlayer.src) {
+    if (reportedErrorSrc === media.src) {
       return;
     }
-    reportedErrorSrc = videoPlayer.src;
+    reportedErrorSrc = media.src;
 
     showError(message);
     failureCount += 1;
@@ -290,6 +369,68 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     step(1);
+  }
+
+  // ロック画面・通知の再生操作をプレイヤーに結び付ける
+  function setupMediaSession() {
+    if (!('mediaSession' in navigator)) {
+      return;
+    }
+
+    const handlers = {
+      play: () => media.play().catch(() => {}),
+      pause: () => media.pause(),
+      previoustrack: () => step(-1),
+      nexttrack: () => step(1),
+      seekto: (details) => {
+        media.currentTime = details.seekTime;
+      },
+    };
+
+    Object.entries(handlers).forEach(([action, handler]) => {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch (error) {
+        // 未対応のアクションはブラウザ側で例外になるため無視する
+      }
+    });
+  }
+
+  // ロック画面・通知に表示する曲情報を更新する
+  function updateMediaMetadata(item) {
+    if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') {
+      return;
+    }
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: item.title,
+      artist: playlistInfo && playlistInfo.uploader ? playlistInfo.uploader : '',
+      album: playlistInfo ? playlistInfo.title : '',
+      artwork: item.thumbnail_url ? [{ src: item.thumbnail_url }] : [],
+    });
+  }
+
+  function setPlaybackState(state) {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = state;
+    }
+  }
+
+  // ロック画面のシークバーに再生位置を反映する
+  function updatePositionState() {
+    if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) {
+      return;
+    }
+
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: media.duration,
+        playbackRate: media.playbackRate,
+        position: media.currentTime,
+      });
+    } catch (error) {
+      // ライブ配信など長さが確定しない場合は位置情報を設定しない
+    }
   }
 
   // 再生中の項目を一覧上で強調する

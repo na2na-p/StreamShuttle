@@ -26,6 +26,7 @@
     </div>
 
     <video id="video-player" class="video-player" controls playsinline preload="metadata"></video>
+    <audio id="audio-player" class="audio-player hidden" controls preload="metadata"></audio>
 
     <p id="now-playing" class="now-playing"></p>
 
@@ -35,6 +36,10 @@
       <label class="toggle">
         <input type="checkbox" id="shuffle-toggle">
         シャッフル
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="audio-only-toggle">
+        音声のみ
       </label>
       <label class="toggle">
         リピート

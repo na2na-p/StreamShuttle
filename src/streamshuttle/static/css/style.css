@@ -366,6 +366,16 @@ button:disabled {
   aspect-ratio: 16 / 9;
 }
 
+.audio-player {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.audio-player.hidden {
+  display: none;
+}
+
 .now-playing {
   margin-top: 0.75rem;
   font-weight: 600;
