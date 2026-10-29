@@ -19,10 +19,11 @@ document.addEventListener('DOMContentLoaded', function() {
   const audioArtwork = document.getElementById('audio-artwork');
   const nowPlaying = document.getElementById('now-playing');
   const prevBtn = document.getElementById('prev-btn');
+  const playBtn = document.getElementById('play-btn');
   const nextBtn = document.getElementById('next-btn');
-  const shuffleToggle = document.getElementById('shuffle-toggle');
-  const repeatMode = document.getElementById('repeat-mode');
-  const audioOnlyToggle = document.getElementById('audio-only-toggle');
+  const shuffleBtn = document.getElementById('shuffle-btn');
+  const repeatBtn = document.getElementById('repeat-btn');
+  const audioOnlyBtn = document.getElementById('audio-only-btn');
   const playlistItems = document.getElementById('playlist-items');
 
   // 状態管理
@@ -38,9 +39,16 @@ document.addEventListener('DOMContentLoaded', function() {
   loadBtn.addEventListener('click', loadPlaylist);
   prevBtn.addEventListener('click', () => step(-1));
   nextBtn.addEventListener('click', () => step(1));
-  shuffleToggle.addEventListener('change', rebuildPlayOrder);
-  repeatMode.addEventListener('change', applyRepeatMode);
-  audioOnlyToggle.addEventListener('change', applyAudioOnly);
+  playBtn.addEventListener('click', togglePlay);
+  shuffleBtn.addEventListener('click', () => {
+    togglePressed(shuffleBtn);
+    rebuildPlayOrder();
+  });
+  repeatBtn.addEventListener('click', cycleRepeatMode);
+  audioOnlyBtn.addEventListener('click', () => {
+    togglePressed(audioOnlyBtn);
+    applyAudioOnly();
+  });
   [videoPlayer, audioPlayer].forEach((element) => {
     // 切り替えで使われなくなった側の要素のイベントは無視する
     element.addEventListener('ended', () => {
@@ -56,11 +64,13 @@ document.addEventListener('DOMContentLoaded', function() {
     element.addEventListener('play', () => {
       if (element === media) {
         setPlaybackState('playing');
+        updatePlayButton();
       }
     });
     element.addEventListener('pause', () => {
       if (element === media) {
         setPlaybackState('paused');
+        updatePlayButton();
       }
     });
     element.addEventListener('loadedmetadata', () => {
@@ -75,9 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   setupMediaSession();
-  // リロード時にブラウザが復元したフォーム値も反映する
   applyRepeatMode();
-  applyAudioOnly();
 
   // プレイリストを読み込む
   async function loadPlaylist() {
@@ -207,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function buildPlayOrder(currentIndex) {
     const indices = items.map((_, index) => index);
 
-    if (shuffleToggle.checked) {
+    if (isPressed(shuffleBtn)) {
       const rest = indices.filter((index) => index !== currentIndex);
       shuffle(rest);
       playOrder = [currentIndex, ...rest];
@@ -235,13 +243,56 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function currentRepeatMode() {
-    const checked = repeatMode.querySelector('input[name="repeat-mode"]:checked');
-    return checked ? checked.value : 'all';
+    return repeatBtn.dataset.mode;
+  }
+
+  // リピートを なし → 全曲 → 1曲 の順に切り替える
+  function cycleRepeatMode() {
+    const modes = ['off', 'all', 'one'];
+    const labels = { off: 'なし', all: '全曲', one: '1曲' };
+    const mode = modes[(modes.indexOf(currentRepeatMode()) + 1) % modes.length];
+
+    repeatBtn.dataset.mode = mode;
+    repeatBtn.setAttribute('aria-pressed', String(mode !== 'off'));
+    repeatBtn.setAttribute('aria-label', `リピート: ${labels[mode]}`);
+    repeatBtn.title = `リピート: ${labels[mode]}`;
+    applyRepeatMode();
+  }
+
+  function isPressed(button) {
+    return button.getAttribute('aria-pressed') === 'true';
+  }
+
+  function togglePressed(button) {
+    button.setAttribute('aria-pressed', String(!isPressed(button)));
+  }
+
+  // 再生/一時停止。まだ何も読み込んでいなければ現在位置の曲から再生する
+  function togglePlay() {
+    if (!media.getAttribute('src')) {
+      if (items.length > 0) {
+        play(playOrder[orderPos] ?? 0);
+      }
+      return;
+    }
+
+    if (media.paused) {
+      media.play().catch(() => {});
+    } else {
+      media.pause();
+    }
+  }
+
+  function updatePlayButton() {
+    const playing = !media.paused;
+    playBtn.classList.toggle('is-playing', playing);
+    playBtn.setAttribute('aria-label', playing ? '一時停止' : '再生');
+    playBtn.title = playing ? '一時停止' : '再生';
   }
 
   // 「音声のみ」の切り替え。再生中のソース・再生位置・再生状態を引き継いで要素を入れ替える
   function applyAudioOnly() {
-    const next = audioOnlyToggle.checked ? audioPlayer : videoPlayer;
+    const next = isPressed(audioOnlyBtn) ? audioPlayer : videoPlayer;
     videoPlayer.classList.toggle('hidden', next !== videoPlayer);
     audioPlayer.classList.toggle('hidden', next !== audioPlayer);
     updateArtworkVisibility();
@@ -452,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function updateArtworkVisibility() {
-    const visible = audioOnlyToggle.checked && audioArtwork.hasAttribute('src');
+    const visible = isPressed(audioOnlyBtn) && audioArtwork.hasAttribute('src');
     audioArtwork.classList.toggle('hidden', !visible);
   }
 
