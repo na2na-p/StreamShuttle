@@ -405,13 +405,40 @@ button:disabled {
   margin-top: 1rem;
 }
 
+/* オン/オフ切り替え（チェックボックスを隠してチップ状に表示） */
 .player-controls .toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-weight: 400;
-  color: #555;
+  position: relative;
   cursor: pointer;
+}
+
+.player-controls .toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.player-controls .toggle span {
+  display: block;
+  padding: 0.45rem 1rem;
+  border: 1px solid #3498db;
+  border-radius: 999px;
+  color: #3498db;
+  font-size: 0.95rem;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.player-controls .toggle:hover span {
+  background-color: #eaf4fb;
+}
+
+.player-controls .toggle input:checked + span {
+  background-color: #3498db;
+  color: white;
+}
+
+.player-controls .toggle input:focus-visible + span {
+  outline: 2px solid #2980b9;
+  outline-offset: 2px;
 }
 
 /* リピート切り替え（セグメントコントロール） */
