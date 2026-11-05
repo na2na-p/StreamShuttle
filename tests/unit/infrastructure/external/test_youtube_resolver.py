@@ -14,6 +14,7 @@ import yt_dlp
 
 from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.infrastructure.external.youtube_resolver import YoutubeResolver
+from streamshuttle.infrastructure.external.ytdlp_options_factory import YtDlpOptionsFactory
 from streamshuttle.shared.exceptions import (
     HlsMasterUnavailableError,
     InvalidUrlError,
@@ -711,3 +712,99 @@ async def test_resolve_url_does_not_assign_default_ttl_to_hls_master_without_exp
         result = await resolver.resolve_url(YOUTUBE_URL, hls=HlsMode.MASTER)
 
     assert result.ttl_seconds == 0
+
+
+HLS_MASTER_MANIFEST_URL = (
+    "https://manifest.googlevideo.com/api/manifest/hls_variant/expire/4102444800/playlist.m3u8"
+)
+
+
+def _hls_formats_with_separate_streams() -> list[dict]:
+    return [
+        {
+            "format_id": "video",
+            "url": "https://example.test/video.m3u8",
+            "manifest_url": HLS_MASTER_MANIFEST_URL,
+            "ext": "mp4",
+            "protocol": "m3u8_native",
+            "vcodec": "avc1.64001f",
+            "acodec": "none",
+            "width": 1280,
+            "height": 720,
+            "tbr": 1000,
+        },
+        {
+            "format_id": "audio",
+            "url": "https://example.test/audio.m3u8",
+            "manifest_url": HLS_MASTER_MANIFEST_URL,
+            "ext": "m4a",
+            "protocol": "m3u8_native",
+            "vcodec": "none",
+            "acodec": "mp4a.40.2",
+            "abr": 128,
+            "tbr": 128,
+        },
+    ]
+
+
+def _hls_formats_with_combined_stream() -> list[dict]:
+    return [
+        {
+            "format_id": "18",
+            "url": "https://example.test/combined.mp4",
+            "manifest_url": HLS_MASTER_MANIFEST_URL,
+            "ext": "mp4",
+            "protocol": "https",
+            "vcodec": "avc1.42001E",
+            "acodec": "mp4a.40.2",
+            "width": 640,
+            "height": 360,
+            "tbr": 500,
+        }
+    ]
+
+
+def _select_formats_with_ytdlp(format_spec: str, formats: list[dict]) -> dict:
+    info = {
+        "id": "testvideo",
+        "title": "test video",
+        "extractor": "youtube",
+        "extractor_key": "Youtube",
+        "webpage_url": "https://www.youtube.com/watch?v=testvideo",
+        "formats": formats,
+    }
+    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "format": format_spec}) as ydl:
+        return ydl.process_ie_result(info, download=False)
+
+
+@pytest.mark.parametrize(
+    "formats",
+    [
+        pytest.param(_hls_formats_with_separate_streams(), id="映像のみと音声のみのHLS形式"),
+        pytest.param(_hls_formats_with_combined_stream(), id="結合済み形式のみ"),
+    ],
+)
+def test_hls_master_format_selects_streams_and_preserves_master_manifest(resolver, formats):
+    """hls=masterはyt-dlpの実際の選択を通してマニフェストを取得できる。"""
+    format_spec = YtDlpOptionsFactory.select_url_resolution_format(
+        format_id="18", hls=HlsMode.MASTER
+    )
+
+    selected_info = _select_formats_with_ytdlp(format_spec, formats)
+
+    assert resolver._extract_hls_manifest_url(selected_info) == HLS_MASTER_MANIFEST_URL
+
+
+def test_resolve_url_sync_does_not_fallback_after_master_manifest_is_selected(resolver):
+    """既定クライアントがhls=masterを解決できればandroidへ再試行しない。"""
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.return_value = {"manifest_url": HLS_MASTER_MANIFEST_URL}
+
+        result = resolver._resolve_url_sync(YOUTUBE_URL, format_id="18", hls=HlsMode.MASTER)
+
+    assert result == HLS_MASTER_MANIFEST_URL
+    assert mock_ydl.extract_info.call_count == 1
+    assert mock_ydl_class.call_args.args[0]["format"] == (
+        YtDlpOptionsFactory.select_url_resolution_format("18", HlsMode.MASTER)
+    )

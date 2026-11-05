@@ -3,16 +3,31 @@
 yt-dlpの共通オプションと用途別オプションを生成する。
 """
 
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.shared.config import config
 
 # YouTubeの既定プレイヤークライアントは音声+映像の結合済みフォーマットを返さないことがある。
 # androidは結合済みMP4(format 18)を安定して返し、URLも認証なしで再生できるため、
 # 既定クライアントで失敗した場合に限って使う。他のクライアントは同じformat 18でも403になる
 FALLBACK_PLAYER_CLIENTS: tuple[str, ...] = ("android",)
+_LEGACY_STREAM_FORMAT_SPEC = "best[protocol^=http][protocol!*=m3u8][ext=mp4]/best[ext=mp4]/best"
+_HLS_STREAM_FORMAT_SPEC = "best"
+_HLS_MASTER_FORMAT_SPEC = "bestvideo*+bestaudio/best"
 
 
 class YtDlpOptionsFactory:
     """yt-dlpオプション生成ファクトリー"""
+
+    @staticmethod
+    def select_url_resolution_format(format_id: str | None, hls: HlsMode) -> str:
+        """URL解決の目的に応じたyt-dlpフォーマット指定を返す。"""
+        if hls.is_master:
+            return _HLS_MASTER_FORMAT_SPEC
+        if format_id:
+            return format_id
+        if hls.uses_hls:
+            return _HLS_STREAM_FORMAT_SPEC
+        return _LEGACY_STREAM_FORMAT_SPEC
 
     @staticmethod
     def create_base_options() -> dict:

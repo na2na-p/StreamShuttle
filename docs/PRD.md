@@ -120,6 +120,7 @@ yt-dlpでのURL解決エラー率が一定の閾値を超えた場合、監視�
 * **実装上の考慮事項**:
   - VRChatのyt-dlpとの互換性を確保しつつ、307 Temporary Redirectを使用している。プレーンテキストレスポンスはyt-dlpがURLを抽出できないため、リダイレクト方式を採用している。
   - Unity Video PlayerはHLS (.m3u8) 非対応のため、yt-dlpのフォーマット選択でプログレッシブMP4を優先する。これにより、Unity Video PlayerとAVPro Video Playerの両方で再生可能なURLを提供する。
+  - `hls=master` は個別ストリームの再生URLではなくマニフェストURLを取得する。そのため映像・音声が分離された形式でも選択でき、結合済み形式のみの場合にもフォールバックできる `bestvideo*+bestaudio/best` を使う。`hls` 未指定および `hls=true` の既存のフォーマット選択は変えない。
 
 ### バックエンド
 
