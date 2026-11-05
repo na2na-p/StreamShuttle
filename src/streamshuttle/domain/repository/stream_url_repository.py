@@ -6,6 +6,7 @@ StreamUrl Aggregateの永続化を担当するRepositoryインターフェース
 
 from typing import Protocol
 
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.domain.model.stream_url import StreamUrl, YouTubeVideoId
 
 
@@ -20,7 +21,7 @@ class StreamUrlRepository(Protocol):
     参照系UseCase向けのDTO取得はQueryServiceで行います。
     """
 
-    async def save(self, stream_url: StreamUrl, hls: bool = False) -> None:
+    async def save(self, stream_url: StreamUrl, hls: HlsMode = HlsMode.DISABLED) -> None:
         """
         StreamUrlを保存します
 
@@ -54,7 +55,9 @@ class StreamUrlRepository(Protocol):
         """
         ...
 
-    async def find_by_video_id(self, video_id: str, hls: bool = False) -> StreamUrl | None:
+    async def find_by_video_id(
+        self, video_id: str, hls: HlsMode = HlsMode.DISABLED
+    ) -> StreamUrl | None:
         """
         VideoIdに紐づくStreamUrlを取得します
 

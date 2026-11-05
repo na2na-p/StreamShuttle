@@ -5,6 +5,7 @@ Domain層で定義されたStreamUrlRepositoryインターフェースの実装�
 """
 
 from streamshuttle.domain.model.cache_key.stream_url_cache_key import StreamUrlCacheKey
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.domain.model.stream_url import StreamUrl, YouTubeVideoId
 from streamshuttle.domain.model.twitch_url import TwitchVideoId
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
@@ -35,7 +36,10 @@ class StreamUrlRepository:
         self._redis_dao = redis_dao
 
     async def save(
-        self, stream_url: StreamUrl, hls: bool = False, platform: str = "youtube"
+        self,
+        stream_url: StreamUrl,
+        hls: HlsMode = HlsMode.DISABLED,
+        platform: str = "youtube",
     ) -> None:
         """
         StreamUrlを保存します
@@ -67,7 +71,7 @@ class StreamUrlRepository:
     async def delete(
         self,
         video_id: YouTubeVideoId | TwitchVideoId,
-        hls: bool = False,
+        hls: HlsMode = HlsMode.DISABLED,
         platform: str = "youtube",
     ) -> None:
         """
@@ -92,7 +96,10 @@ class StreamUrlRepository:
         await self._redis_dao.delete(key=cache_key.value)
 
     async def find_by_video_id(
-        self, video_id: str, hls: bool = False, platform: str = "youtube"
+        self,
+        video_id: str,
+        hls: HlsMode = HlsMode.DISABLED,
+        platform: str = "youtube",
     ) -> StreamUrl | None:
         """
         VideoIdに紐づくStreamUrlを取得します

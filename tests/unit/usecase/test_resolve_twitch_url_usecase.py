@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.domain.model.stream_url import StreamUrl
 from streamshuttle.domain.model.twitch_url import TwitchUrl
 from streamshuttle.usecase.command.resolve_twitch_url_usecase import ResolveTwitchUrlUseCase
@@ -65,7 +66,7 @@ class TestResolveTwitchUrlUseCase:
         # Assert
         assert result == cached_url
         mock_repository.find_by_video_id.assert_called_once_with(
-            video_id, hls=True, platform="twitch"
+            video_id, hls=HlsMode.ENABLED, platform="twitch"
         )
         mock_twitch_resolver.resolve_url.assert_not_called()
         mock_repository.save.assert_not_called()
@@ -95,7 +96,7 @@ class TestResolveTwitchUrlUseCase:
         # Assert
         assert result == resolved_url
         mock_repository.find_by_video_id.assert_called_once_with(
-            video_id, hls=True, platform="twitch"
+            video_id, hls=HlsMode.ENABLED, platform="twitch"
         )
         mock_twitch_resolver.resolve_url.assert_called_once_with(twitch_url_str, None)
         mock_repository.save.assert_called_once()
@@ -106,7 +107,7 @@ class TestResolveTwitchUrlUseCase:
         assert saved_stream_url.resolved_url.value == resolved_url
         # TwitchはHLS形式のみなのでhls=Trueで保存、platform="twitch"で保存
         _, save_kwargs = mock_repository.save.call_args
-        assert save_kwargs.get("hls") is True
+        assert save_kwargs.get("hls") is HlsMode.ENABLED
         assert save_kwargs.get("platform") == "twitch"
 
     @pytest.mark.asyncio
@@ -140,7 +141,7 @@ class TestResolveTwitchUrlUseCase:
         # Assert
         assert result == new_resolved_url
         mock_repository.find_by_video_id.assert_called_once_with(
-            video_id, hls=True, platform="twitch"
+            video_id, hls=HlsMode.ENABLED, platform="twitch"
         )
         mock_twitch_resolver.resolve_url.assert_called_once_with(twitch_url_str, None)
         mock_repository.save.assert_called_once()
@@ -231,13 +232,13 @@ class TestResolveTwitchUrlUseCase:
         # find_by_video_idはhls=True, platform="twitch"で呼ばれる
         mock_repository.find_by_video_id.assert_called_once()
         _, kwargs = mock_repository.find_by_video_id.call_args
-        assert kwargs.get("hls") is True
+        assert kwargs.get("hls") is HlsMode.ENABLED
         assert kwargs.get("platform") == "twitch"
 
         # saveもhls=True, platform="twitch"で呼ばれる
         mock_repository.save.assert_called_once()
         _, save_kwargs = mock_repository.save.call_args
-        assert save_kwargs.get("hls") is True
+        assert save_kwargs.get("hls") is HlsMode.ENABLED
         assert save_kwargs.get("platform") == "twitch"
 
     @pytest.mark.asyncio
@@ -266,7 +267,7 @@ class TestResolveTwitchUrlUseCase:
         # Assert
         assert result == resolved_url
         mock_repository.find_by_video_id.assert_called_once_with(
-            video_id, hls=True, platform="twitch"
+            video_id, hls=HlsMode.ENABLED, platform="twitch"
         )
         saved_stream_url = mock_repository.save.call_args[0][0]
         assert saved_stream_url.video_id.value == video_id
@@ -297,7 +298,7 @@ class TestResolveTwitchUrlUseCase:
         # Assert
         assert result == resolved_url
         mock_repository.find_by_video_id.assert_called_once_with(
-            video_id, hls=True, platform="twitch"
+            video_id, hls=HlsMode.ENABLED, platform="twitch"
         )
         saved_stream_url = mock_repository.save.call_args[0][0]
         assert saved_stream_url.video_id.value == video_id
@@ -352,7 +353,7 @@ class TestResolveTwitchUrlUseCase:
         # Assert
         assert result == resolved_url
         mock_repository.find_by_video_id.assert_called_once_with(
-            video_id, hls=True, platform="twitch"
+            video_id, hls=HlsMode.ENABLED, platform="twitch"
         )
 
     @pytest.mark.asyncio
@@ -380,5 +381,5 @@ class TestResolveTwitchUrlUseCase:
         # Assert
         assert result == resolved_url
         mock_repository.find_by_video_id.assert_called_once_with(
-            video_id, hls=True, platform="twitch"
+            video_id, hls=HlsMode.ENABLED, platform="twitch"
         )

@@ -7,6 +7,7 @@ UseCase層で定義されたStreamUrlQueryServiceインターフェースの実�
 from datetime import UTC, datetime, timedelta
 
 from streamshuttle.domain.model.cache_key.stream_url_cache_key import StreamUrlCacheKey
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.domain.model.stream_url.youtube_video_id import YouTubeVideoId
 from streamshuttle.domain.model.twitch_url.twitch_video_id import TwitchVideoId
 from streamshuttle.infrastructure.dao.redis_dao import RedisDao
@@ -42,7 +43,10 @@ class StreamUrlQueryService:
         self._redis_dao = redis_dao
 
     async def find_by_video_id(
-        self, video_id: str, hls: bool = False, platform: str = "youtube"
+        self,
+        video_id: str,
+        hls: HlsMode = HlsMode.DISABLED,
+        platform: str = "youtube",
     ) -> StreamUrlDto | None:
         """
         動画IDでストリームURL情報を取得します

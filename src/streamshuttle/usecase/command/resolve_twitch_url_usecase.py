@@ -4,6 +4,7 @@ Twitch URL解決UseCaseモジュール
 Twitch URLをストリームURLに解決し、キャッシュに保存するUseCaseを定義します。
 """
 
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.domain.model.stream_url import StreamUrl
 from streamshuttle.domain.model.twitch_url import TwitchUrl
 from streamshuttle.domain.repository.stream_url_repository import StreamUrlRepository
@@ -60,7 +61,9 @@ class ResolveTwitchUrlUseCase:
         video_id = twitch_url.extract_video_id()
 
         # TwitchはHLS形式のみなので、hls=Trueとしてキャッシュを検索
-        cached = await self._repository.find_by_video_id(str(video_id), hls=True, platform="twitch")
+        cached = await self._repository.find_by_video_id(
+            str(video_id), hls=HlsMode.ENABLED, platform="twitch"
+        )
 
         if cached and not cached.is_expired():
             return cached.resolved_url.value
@@ -73,6 +76,6 @@ class ResolveTwitchUrlUseCase:
             ttl_seconds=result.ttl_seconds,
             platform="twitch",
         )
-        await self._repository.save(stream_url, hls=True, platform="twitch")
+        await self._repository.save(stream_url, hls=HlsMode.ENABLED, platform="twitch")
 
         return result.resolved_url

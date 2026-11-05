@@ -4,6 +4,7 @@ YouTube URL解決UseCaseモジュール
 YouTube URLをストリームURLに解決し、キャッシュに保存するUseCaseを定義します。
 """
 
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.domain.model.stream_url import StreamUrl
 from streamshuttle.domain.model.youtube_url import YoutubeUrl
 from streamshuttle.domain.repository.stream_url_repository import StreamUrlRepository
@@ -42,7 +43,10 @@ class ResolveYoutubeUrlUseCase:
         self._youtube_resolver = youtube_resolver
 
     async def execute(
-        self, youtube_url: YoutubeUrl, format_id: str | None = None, hls: bool = False
+        self,
+        youtube_url: YoutubeUrl,
+        format_id: str | None = None,
+        hls: HlsMode = HlsMode.DISABLED,
     ) -> str:
         """
         YouTube URLをストリームURLに解決します
@@ -77,6 +81,9 @@ class ResolveYoutubeUrlUseCase:
             return cached.resolved_url.value
 
         result = await self._youtube_resolver.resolve_url(str(youtube_url), format_id, hls)
+
+        if hls.is_master and result.ttl_seconds <= 0:
+            return result.resolved_url
 
         stream_url = StreamUrl.create(
             video_id=str(video_id),

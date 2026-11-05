@@ -9,8 +9,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.domain.model.stream_url import StreamUrl
 from streamshuttle.domain.model.youtube_url import YoutubeUrl
+from streamshuttle.shared.exceptions import HlsMasterUnavailableError
 from streamshuttle.usecase.command.resolve_youtube_url_usecase import ResolveYoutubeUrlUseCase
 from streamshuttle.usecase.dto.resolved_url_result_dto import ResolvedUrlResultDto
 
@@ -61,7 +63,7 @@ class TestResolveYoutubeUrlUseCase:
 
         # Assert
         assert result == cached_url
-        mock_repository.find_by_video_id.assert_called_once_with(video_id, False)
+        mock_repository.find_by_video_id.assert_called_once_with(video_id, HlsMode.DISABLED)
         mock_youtube_resolver.resolve_url.assert_not_called()
         mock_repository.save.assert_not_called()
 
@@ -88,8 +90,10 @@ class TestResolveYoutubeUrlUseCase:
 
         # Assert
         assert result == resolved_url
-        mock_repository.find_by_video_id.assert_called_once_with(video_id, False)
-        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url_str, None, False)
+        mock_repository.find_by_video_id.assert_called_once_with(video_id, HlsMode.DISABLED)
+        mock_youtube_resolver.resolve_url.assert_called_once_with(
+            youtube_url_str, None, HlsMode.DISABLED
+        )
         mock_repository.save.assert_called_once()
 
         # Repositoryに保存されたStreamUrlを検証
@@ -97,7 +101,7 @@ class TestResolveYoutubeUrlUseCase:
         assert saved_stream_url.video_id.value == video_id
         assert saved_stream_url.resolved_url.value == resolved_url
         # hlsパラメータも検証
-        assert mock_repository.save.call_args[0][1] is False
+        assert mock_repository.save.call_args[0][1] is HlsMode.DISABLED
 
     async def test_execute_cache_expired(
         self,
@@ -127,8 +131,10 @@ class TestResolveYoutubeUrlUseCase:
 
         # Assert
         assert result == new_resolved_url
-        mock_repository.find_by_video_id.assert_called_once_with(video_id, False)
-        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url_str, None, False)
+        mock_repository.find_by_video_id.assert_called_once_with(video_id, HlsMode.DISABLED)
+        mock_youtube_resolver.resolve_url.assert_called_once_with(
+            youtube_url_str, None, HlsMode.DISABLED
+        )
         mock_repository.save.assert_called_once()
 
     async def test_execute_saves_with_correct_ttl(
@@ -187,7 +193,9 @@ class TestResolveYoutubeUrlUseCase:
 
         # Assert
         assert result == resolved_url
-        mock_youtube_resolver.resolve_url.assert_called_once_with(youtube_url_str, format_id, False)
+        mock_youtube_resolver.resolve_url.assert_called_once_with(
+            youtube_url_str, format_id, HlsMode.DISABLED
+        )
         mock_repository.find_by_video_id.assert_not_called()
         mock_repository.save.assert_not_called()
 
@@ -196,21 +204,21 @@ class TestResolveYoutubeUrlUseCase:
         [
             pytest.param(
                 "137",
-                False,
+                HlsMode.DISABLED,
                 True,
                 False,
                 id="正常系: format_id指定時は有効なキャッシュがあってもresolverで解決する",
             ),
             pytest.param(
                 "137",
-                True,
+                HlsMode.ENABLED,
                 False,
                 False,
                 id="正常系: format_id指定かつhls=Trueでもキャッシュを使わない",
             ),
             pytest.param(
                 None,
-                False,
+                HlsMode.DISABLED,
                 False,
                 True,
                 id="正常系: format_id未指定時は従来どおりキャッシュを読み書きする",
@@ -223,7 +231,7 @@ class TestResolveYoutubeUrlUseCase:
         mock_youtube_resolver: AsyncMock,
         mock_repository: AsyncMock,
         format_id: str | None,
-        hls: bool,
+        hls: HlsMode,
         has_valid_cache: bool,
         expect_cache_used: bool,
     ) -> None:
@@ -258,3 +266,62 @@ class TestResolveYoutubeUrlUseCase:
         else:
             mock_repository.find_by_video_id.assert_not_called()
             mock_repository.save.assert_not_called()
+
+    async def test_execute_keeps_hls_master_cache_separate_from_default_cache(
+        self, usecase, mock_youtube_resolver, mock_repository
+    ):
+        youtube_url = YoutubeUrl(_value="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        mock_repository.find_by_video_id.return_value = None
+        mock_youtube_resolver.resolve_url.return_value = ResolvedUrlResultDto(
+            resolved_url="https://manifest.googlevideo.com/api/manifest/hls_variant/expire/4102444800",
+            ttl_seconds=3600,
+        )
+
+        await usecase.execute(youtube_url, hls=HlsMode.MASTER)
+
+        mock_repository.find_by_video_id.assert_called_once_with("dQw4w9WgXcQ", HlsMode.MASTER)
+        assert mock_repository.save.call_args.args[1] is HlsMode.MASTER
+
+    async def test_execute_uses_cached_hls_master_without_rechecking_video(
+        self, usecase, mock_youtube_resolver, mock_repository
+    ):
+        youtube_url = YoutubeUrl(_value="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        cached_manifest = (
+            "https://manifest.googlevideo.com/api/manifest/hls_variant/expire/4102444800"
+        )
+        mock_repository.find_by_video_id.return_value = StreamUrl.create(
+            video_id="dQw4w9WgXcQ", resolved_url=cached_manifest, ttl_seconds=3600
+        )
+
+        result = await usecase.execute(youtube_url, hls=HlsMode.MASTER)
+
+        assert result == cached_manifest
+        mock_youtube_resolver.resolve_url.assert_not_called()
+        mock_repository.save.assert_not_called()
+
+    async def test_execute_does_not_cache_unavailable_hls_master(
+        self, usecase, mock_youtube_resolver, mock_repository
+    ):
+        youtube_url = YoutubeUrl(_value="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        mock_repository.find_by_video_id.return_value = None
+        mock_youtube_resolver.resolve_url.side_effect = HlsMasterUnavailableError()
+
+        with pytest.raises(HlsMasterUnavailableError):
+            await usecase.execute(youtube_url, hls=HlsMode.MASTER)
+
+        mock_repository.save.assert_not_called()
+
+    async def test_execute_does_not_cache_hls_master_without_a_future_expiry(
+        self, usecase, mock_youtube_resolver, mock_repository
+    ):
+        youtube_url = YoutubeUrl(_value="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        mock_repository.find_by_video_id.return_value = None
+        mock_youtube_resolver.resolve_url.return_value = ResolvedUrlResultDto(
+            resolved_url="https://manifest.googlevideo.com/api/manifest/hls_variant/playlist.m3u8",
+            ttl_seconds=0,
+        )
+
+        result = await usecase.execute(youtube_url, hls=HlsMode.MASTER)
+
+        assert result.endswith("playlist.m3u8")
+        mock_repository.save.assert_not_called()

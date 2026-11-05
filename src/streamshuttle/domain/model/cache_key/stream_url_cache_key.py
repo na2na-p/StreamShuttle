@@ -6,6 +6,8 @@ StreamURLのキャッシュキーを表現するValueObjectを定義します。
 
 from dataclasses import dataclass
 
+from streamshuttle.domain.model.hls_mode import HlsMode
+
 
 @dataclass(frozen=True)
 class StreamUrlCacheKey:
@@ -23,7 +25,7 @@ class StreamUrlCacheKey:
 
     _platform: str
     _video_id_value: str
-    _hls: bool
+    _hls: HlsMode
 
     @property
     def value(self) -> str:
@@ -33,7 +35,7 @@ class StreamUrlCacheKey:
         Returns:
             str: 「{platform}:{video_id}:hls:{hls}」形式のキャッシュキー
         """
-        return f"{self._platform}:{self._video_id_value}:hls:{self._hls}"
+        return f"{self._platform}:{self._video_id_value}:hls:{self._hls.cache_key_value}"
 
     def __str__(self) -> str:
         """キャッシュキーの文字列表現を返す"""
