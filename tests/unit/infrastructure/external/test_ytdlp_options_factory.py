@@ -2,6 +2,7 @@
 
 import pytest
 
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.infrastructure.external.ytdlp_options_factory import (
     FALLBACK_PLAYER_CLIENTS,
     YtDlpOptionsFactory,
@@ -11,6 +12,32 @@ from streamshuttle.shared.config import config
 
 class TestYtDlpOptionsFactory:
     """YtDlpOptionsFactory のテストクラス"""
+
+    @pytest.mark.parametrize(
+        "format_id, hls, expected_format",
+        [
+            pytest.param(
+                None,
+                HlsMode.DISABLED,
+                "best[protocol^=http][protocol!*=m3u8][ext=mp4]/best[ext=mp4]/best",
+                id="hlsなしは既存のMP4優先指定を使う",
+            ),
+            pytest.param(None, HlsMode.ENABLED, "best", id="hls=trueは既存のbestを使う"),
+            pytest.param("137", HlsMode.DISABLED, "137", id="明示した形式を使う"),
+            pytest.param("137", HlsMode.ENABLED, "137", id="hls=trueでも明示した形式を使う"),
+            pytest.param(
+                "18",
+                HlsMode.MASTER,
+                "bestvideo*+bestaudio/best",
+                id="hls=masterは結合済み形式を要求しない",
+            ),
+        ],
+    )
+    def test_select_url_resolution_format_uses_the_mode_contract(
+        self, format_id, hls, expected_format
+    ):
+        """URL解決の用途ごとにフォーマット選択の契約を固定する。"""
+        assert YtDlpOptionsFactory.select_url_resolution_format(format_id, hls) == expected_format
 
     @pytest.mark.parametrize(
         "method_name, expected_keys",

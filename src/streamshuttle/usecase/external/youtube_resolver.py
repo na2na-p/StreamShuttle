@@ -33,6 +33,7 @@ class YoutubeResolver(Protocol):
         yt-dlpを使用してYouTube動画URLから直接アクセス可能なストリームURLを取得します。
         format_idが指定されている場合は指定されたフォーマットの単一ストリームURLを返し、
         指定されていない場合は最適な品質（'best'フォーマット）のURLを選択して返します。
+        hls=HlsMode.MASTERの場合はformat_idより優先し、個々の形式の選択に依存せずHLSマスターマニフェストのURLを返します（format_idは形式の選択に使いません）。
 
         Args:
             youtube_url: YouTube動画URL（https://www.youtube.com/watch?v=xxxxx形式）

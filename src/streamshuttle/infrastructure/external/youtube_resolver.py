@@ -159,6 +159,7 @@ class YoutubeResolver:
         yt-dlpを使用してYouTube動画URLから直接アクセス可能なストリームURLを取得します。
         format_idが指定されている場合は指定されたフォーマットの単一ストリームURLを返し、
         指定されていない場合は最適な品質（'best'フォーマット）のURLを選択して返します。
+        hls=HlsMode.MASTERの場合はformat_idより優先し、個々の形式の選択に依存せずHLSマスターマニフェストのURLを返します（format_idは形式の選択に使いません）。
 
         Args:
             youtube_url: YouTube動画URL（https://www.youtube.com/watch?v=xxxxx形式）
@@ -216,7 +217,10 @@ class YoutubeResolver:
         この内部メソッドはasyncio.to_threadから呼び出され、
         yt-dlpの同期処理を実行します。
 
-        format_idが指定された場合、そのフォーマットの単一ストリームURLを返します。
+        hls=HlsMode.MASTERの場合はformat_idより優先し、結合済みの形式を要求しない指定で
+        抽出してHLSマスターマニフェストのURLを返します。
+
+        それ以外でformat_idが指定された場合、そのフォーマットの単一ストリームURLを返します。
         video onlyフォーマットが指定された場合は動画のみ、audio+videoフォーマットが
         指定された場合は音声付きのURLを返します。
 
@@ -247,13 +251,7 @@ class YoutubeResolver:
             yt_dlp.utils.DownloadError: URL解決に失敗した場合（再試行の失敗を含む）
             YouTubeResolverError: URLが取得できなかった場合
         """
-        if format_id:
-            format_spec = format_id
-        else:
-            if hls.uses_hls:
-                format_spec = "best"
-            else:
-                format_spec = "best[protocol^=http][protocol!*=m3u8][ext=mp4]/best[ext=mp4]/best"
+        format_spec = YtDlpOptionsFactory.select_url_resolution_format(format_id, hls)
 
         try:
             return self._extract_stream_url(youtube_url, format_spec, hls)
