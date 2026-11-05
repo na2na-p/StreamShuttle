@@ -43,6 +43,14 @@ class YouTubeResolverError(StreamShuttleError):
         super().__init__(message)
 
 
+class HlsMasterUnavailableError(YouTubeResolverError):
+    """HLS マスターマニフェストが利用できない場合の例外。"""
+
+
+class VideoUnavailableError(YouTubeResolverError):
+    """動画が非公開、削除済み、または視聴不可の場合の例外。"""
+
+
 class CacheError(StreamShuttleError):
     """
     キャッシュ操作エラー例外クラス

@@ -5,6 +5,7 @@ StreamUrlCacheKey ValueObjectのテストモジュール
 import pytest
 
 from streamshuttle.domain.model.cache_key.stream_url_cache_key import StreamUrlCacheKey
+from streamshuttle.domain.model.hls_mode import HlsMode
 
 
 class TestStreamUrlCacheKey:
@@ -16,42 +17,42 @@ class TestStreamUrlCacheKey:
             pytest.param(
                 "youtube",
                 "dQw4w9WgXcQ",
-                False,
+                HlsMode.DISABLED,
                 "youtube:dQw4w9WgXcQ:hls:False",
                 id="正常系: YouTube hls=Falseでキャッシュキーが正しく生成される",
             ),
             pytest.param(
                 "youtube",
                 "dQw4w9WgXcQ",
-                True,
+                HlsMode.ENABLED,
                 "youtube:dQw4w9WgXcQ:hls:True",
                 id="正常系: YouTube hls=Trueでキャッシュキーが正しく生成される",
             ),
             pytest.param(
                 "twitch",
                 "gamesdonequick",
-                True,
+                HlsMode.ENABLED,
                 "twitch:gamesdonequick:hls:True",
                 id="正常系: Twitchチャンネル名でキャッシュキーが正しく生成される",
             ),
             pytest.param(
                 "twitch",
                 "1234567890",
-                True,
+                HlsMode.ENABLED,
                 "twitch:1234567890:hls:True",
                 id="正常系: Twitch VOD IDでキャッシュキーが正しく生成される",
             ),
             pytest.param(
                 "youtube",
                 "abc_def-123",
-                False,
+                HlsMode.DISABLED,
                 "youtube:abc_def-123:hls:False",
                 id="正常系: 特殊文字を含むvideo_idでキャッシュキーが正しく生成される",
             ),
         ],
     )
     def test_value_property_returns_correct_cache_key(
-        self, platform: str, video_id_value: str, hls: bool, expected_key: str
+        self, platform: str, video_id_value: str, hls: HlsMode, expected_key: str
     ) -> None:
         """valueプロパティが正しいキャッシュキー文字列を返すことを検証"""
         cache_key = StreamUrlCacheKey(
@@ -67,7 +68,7 @@ class TestStreamUrlCacheKey:
         cache_key = StreamUrlCacheKey(
             _platform="youtube",
             _video_id_value="dQw4w9WgXcQ",
-            _hls=False,
+            _hls=HlsMode.DISABLED,
         )
 
         assert str(cache_key) == cache_key.value
@@ -78,7 +79,7 @@ class TestStreamUrlCacheKey:
         cache_key = StreamUrlCacheKey(
             _platform="youtube",
             _video_id_value="dQw4w9WgXcQ",
-            _hls=False,
+            _hls=HlsMode.DISABLED,
         )
 
         with pytest.raises(AttributeError):
@@ -88,19 +89,19 @@ class TestStreamUrlCacheKey:
             cache_key._video_id_value = "abc_def-123"  # type: ignore
 
         with pytest.raises(AttributeError):
-            cache_key._hls = True  # type: ignore
+            cache_key._hls = HlsMode.ENABLED  # type: ignore
 
     def test_equality_same_values(self) -> None:
         """同じ値を持つStreamUrlCacheKeyが等しいことを検証"""
         cache_key1 = StreamUrlCacheKey(
             _platform="youtube",
             _video_id_value="dQw4w9WgXcQ",
-            _hls=True,
+            _hls=HlsMode.ENABLED,
         )
         cache_key2 = StreamUrlCacheKey(
             _platform="youtube",
             _video_id_value="dQw4w9WgXcQ",
-            _hls=True,
+            _hls=HlsMode.ENABLED,
         )
 
         assert cache_key1 == cache_key2
@@ -110,12 +111,12 @@ class TestStreamUrlCacheKey:
         cache_key1 = StreamUrlCacheKey(
             _platform="youtube",
             _video_id_value="dQw4w9WgXcQ",
-            _hls=True,
+            _hls=HlsMode.ENABLED,
         )
         cache_key2 = StreamUrlCacheKey(
             _platform="youtube",
             _video_id_value="dQw4w9WgXcQ",
-            _hls=False,
+            _hls=HlsMode.DISABLED,
         )
 
         assert cache_key1 != cache_key2
@@ -125,12 +126,12 @@ class TestStreamUrlCacheKey:
         cache_key1 = StreamUrlCacheKey(
             _platform="youtube",
             _video_id_value="dQw4w9WgXcQ",
-            _hls=False,
+            _hls=HlsMode.DISABLED,
         )
         cache_key2 = StreamUrlCacheKey(
             _platform="youtube",
             _video_id_value="abc_def-123",
-            _hls=False,
+            _hls=HlsMode.DISABLED,
         )
 
         assert cache_key1 != cache_key2
@@ -140,12 +141,12 @@ class TestStreamUrlCacheKey:
         cache_key1 = StreamUrlCacheKey(
             _platform="youtube",
             _video_id_value="dQw4w9WgXcQ",
-            _hls=True,
+            _hls=HlsMode.ENABLED,
         )
         cache_key2 = StreamUrlCacheKey(
             _platform="twitch",
             _video_id_value="dQw4w9WgXcQ",
-            _hls=True,
+            _hls=HlsMode.ENABLED,
         )
 
         assert cache_key1 != cache_key2

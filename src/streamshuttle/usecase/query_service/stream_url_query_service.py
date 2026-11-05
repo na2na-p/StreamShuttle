@@ -6,6 +6,7 @@
 
 from typing import Protocol
 
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.usecase.dto.stream_url_dto import StreamUrlDto
 
 
@@ -20,7 +21,9 @@ class StreamUrlQueryService(Protocol):
     実装クラスはInfrastructure層に配置されます。
     """
 
-    async def find_by_video_id(self, video_id: str, hls: bool = False) -> StreamUrlDto | None:
+    async def find_by_video_id(
+        self, video_id: str, hls: HlsMode = HlsMode.DISABLED
+    ) -> StreamUrlDto | None:
         """
         YouTube動画IDでストリームURL情報を取得します
 

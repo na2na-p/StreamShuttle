@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.domain.model.stream_url.stream_url import StreamUrl
 from streamshuttle.domain.model.stream_url.youtube_video_id import YouTubeVideoId
 from streamshuttle.infrastructure.repository.stream_url_repository import StreamUrlRepository
@@ -117,7 +118,7 @@ async def test_stream_url_repository_delete_with_hls_true(repository, mock_redis
     video_id = YouTubeVideoId(_value="dQw4w9WgXcQ")
 
     # Act
-    await repository.delete(video_id=video_id, hls=True)
+    await repository.delete(video_id=video_id, hls=HlsMode.ENABLED)
 
     # Assert
     mock_redis_dao.delete.assert_called_once_with(key="youtube:dQw4w9WgXcQ:hls:True")

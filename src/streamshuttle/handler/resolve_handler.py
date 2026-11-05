@@ -15,14 +15,17 @@ from streamshuttle.di.container import (
     get_resolve_twitch_url_use_case,
     get_resolve_youtube_url_use_case,
 )
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.domain.model.twitch_url import TwitchUrl
 from streamshuttle.domain.model.youtube_url import YoutubeUrl
 from streamshuttle.shared.config import config
 from streamshuttle.shared.exceptions import (
+    HlsMasterUnavailableError,
     HlsNotSupportedError,
     InvalidUrlError,
     InvalidVideoIdError,
     TwitchResolverError,
+    VideoUnavailableError,
     YouTubeResolverError,
 )
 from streamshuttle.shared.rate_limiter import limiter
@@ -56,7 +59,7 @@ def _get_url_domain(url: str) -> str | None:
 async def resolve_url(
     request: Request,
     url: str = Query(..., description="YouTube/Twitch動画URL"),
-    hls: bool = Query(False, description="HLS形式の使用（デフォルト: false、Twitchでは無視）"),
+    hls: str | None = Query(None, description="HLS形式の使用（デフォルト: false、Twitchでは無視）"),
     youtube_use_case: ResolveYoutubeUrlUseCase = Depends(get_resolve_youtube_url_use_case),
     twitch_use_case: ResolveTwitchUrlUseCase = Depends(get_resolve_twitch_url_use_case),
 ) -> RedirectResponse:
@@ -95,16 +98,32 @@ async def resolve_url(
             - 500 Internal Server Error: その他の予期しないエラー
     """
     try:
+        hls_values = request.query_params.getlist("hls")
+        if len(hls_values) > 1:
+            raise ValueError("hls must be specified at most once")
+        hls_mode = HlsMode.from_query(hls_values[0] if hls_values else hls)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid hls value.")
+
+    platform = "unknown"
+    video_id = "unknown"
+    try:
         url_validator.validate_length(url)
 
         domain = _get_url_domain(url)
 
         if domain in TWITCH_DOMAINS:
             twitch_url = TwitchUrl(_value=url)
+            platform = "twitch"
             resolved_url = await twitch_use_case.execute(twitch_url)
         elif domain in YOUTUBE_DOMAINS:
             youtube_url = YoutubeUrl(_value=url)
-            resolved_url = await youtube_use_case.execute(youtube_url, hls=hls)
+            platform = "youtube"
+            try:
+                video_id = str(youtube_url.extract_video_id())
+            except InvalidVideoIdError:
+                pass
+            resolved_url = await youtube_use_case.execute(youtube_url, hls=hls_mode)
         else:
             raise InvalidUrlError(f"Unsupported domain: {domain}")
 
@@ -115,6 +134,10 @@ async def resolve_url(
     except InvalidUrlError:
         logger.warning(f"Invalid URL: url={url}", exc_info=True)
         raise HTTPException(status_code=400, detail="Invalid URL format.")
+    except HlsMasterUnavailableError:
+        raise HTTPException(status_code=404, detail="hls_master_unavailable")
+    except VideoUnavailableError:
+        raise HTTPException(status_code=404, detail="video_unavailable")
     except HlsNotSupportedError:
         logger.warning(f"HLS format rejected: url={url}, hls=False")
         raise HTTPException(
@@ -122,7 +145,7 @@ async def resolve_url(
             detail="This video requires HLS support. Set hls=true or use a compatible player.",
         )
     except (YouTubeResolverError, TwitchResolverError):
-        logger.error(f"Failed to resolve URL: url={url}", exc_info=True)
+        logger.error("URL resolution failed: platform=%s video_id=%s", platform, video_id)
         raise HTTPException(status_code=502, detail="Failed to resolve URL.")
     except Exception:
         logger.error(f"Unexpected error in resolve_url: url={url}", exc_info=True)

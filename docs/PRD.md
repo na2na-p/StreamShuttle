@@ -115,6 +115,8 @@ yt-dlpでのURL解決エラー率が一定の閾値を超えた場合、監視�
 * url クエリパラメータで対象のYouTube URLを受け取る。
 * URL解決に成功した場合、HTTPステータスコード 307 Temporary Redirect と Location ヘッダーに解決済みのストリームURLを設定して応答する。
 * URL解決に失敗した場合、400番台または500番台のステータスコードと、エラー内容を示すJSONを返す。
+* `hls` クエリは既定の `false`、既存の `true` に加えて `master` を受け付ける。`hls=master` を YouTube URL に指定した場合は、音声・複数解像度のトラックを含む HLS マスターマニフェストへ 307 リダイレクトする。
+* `hls=master` でマニフェストを取得できない場合は 404 と `{ "detail": "hls_master_unavailable" }` を返す。動画が非公開、削除済み、または視聴不可の場合は 404 と `{ "detail": "video_unavailable" }` を返す。
 * **実装上の考慮事項**:
   - VRChatのyt-dlpとの互換性を確保しつつ、307 Temporary Redirectを使用している。プレーンテキストレスポンスはyt-dlpがURLを抽出できないため、リダイレクト方式を採用している。
   - Unity Video PlayerはHLS (.m3u8) 非対応のため、yt-dlpのフォーマット選択でプログレッシブMP4を優先する。これにより、Unity Video PlayerとAVPro Video Playerの両方で再生可能なURLを提供する。

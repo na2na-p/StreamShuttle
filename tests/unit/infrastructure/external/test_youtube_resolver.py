@@ -6,13 +6,20 @@ yt-dlpをモック化してテストします。
 """
 
 import logging
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
 import yt_dlp
 
+from streamshuttle.domain.model.hls_mode import HlsMode
 from streamshuttle.infrastructure.external.youtube_resolver import YoutubeResolver
-from streamshuttle.shared.exceptions import InvalidUrlError, YouTubeResolverError
+from streamshuttle.shared.exceptions import (
+    HlsMasterUnavailableError,
+    InvalidUrlError,
+    VideoUnavailableError,
+    YouTubeResolverError,
+)
 from streamshuttle.usecase.dto.resolved_url_result_dto import ResolvedUrlResultDto
 
 
@@ -154,7 +161,7 @@ async def test_youtube_resolver_resolve_url_with_format_id(resolver):
     assert isinstance(result, ResolvedUrlResultDto)
     assert result.resolved_url == expected_stream_url
     assert result.ttl_seconds == 3600
-    mock_sync.assert_called_once_with(youtube_url, format_id, False)
+    mock_sync.assert_called_once_with(youtube_url, format_id, HlsMode.DISABLED)
 
 
 async def test_youtube_resolver_resolve_url_without_format_id(resolver):
@@ -179,7 +186,7 @@ async def test_youtube_resolver_resolve_url_without_format_id(resolver):
     assert isinstance(result, ResolvedUrlResultDto)
     assert result.resolved_url == expected_stream_url
     assert result.ttl_seconds == 3600
-    mock_sync.assert_called_once_with(youtube_url, None, False)
+    mock_sync.assert_called_once_with(youtube_url, None, HlsMode.DISABLED)
 
 
 def test_youtube_resolver_resolve_url_sync_with_format_id(resolver):
@@ -404,6 +411,15 @@ def test_extract_ttl_from_url_returns_zero_for_past_expire(resolver):
     assert result == 0
 
 
+def test_extract_ttl_from_url_returns_zero_for_current_expire(resolver):
+    from datetime import UTC, datetime
+
+    current_expire = int(datetime.now(UTC).timestamp())
+    url = f"https://example.com/stream.mp4?expire={current_expire}"
+
+    assert resolver._extract_ttl_from_url(url) == 0
+
+
 FORMAT_UNAVAILABLE_MESSAGE = (
     "ERROR: [youtube] CbdWElnmJIY: Requested format is not available. "
     "Use --list-formats for a list of available formats"
@@ -414,9 +430,13 @@ YOUTUBE_URL = "https://www.youtube.com/watch?v=CbdWElnmJIY"
 @pytest.mark.parametrize(
     "format_id, hls",
     [
-        pytest.param(None, False, id="正常系: format_id未指定・HLS無効でフォールバックする"),
-        pytest.param(None, True, id="正常系: format_id未指定・HLS有効でフォールバックする"),
-        pytest.param("18", False, id="正常系: format_id指定でもフォールバックする"),
+        pytest.param(
+            None, HlsMode.DISABLED, id="正常系: format_id未指定・HLS無効でフォールバックする"
+        ),
+        pytest.param(
+            None, HlsMode.ENABLED, id="正常系: format_id未指定・HLS有効でフォールバックする"
+        ),
+        pytest.param("18", HlsMode.DISABLED, id="正常系: format_id指定でもフォールバックする"),
     ],
 )
 def test_resolve_url_sync_retries_with_fallback_client_when_format_unavailable(
@@ -529,3 +549,165 @@ async def test_resolve_url_returns_dto_after_fallback(resolver):
     assert isinstance(result, ResolvedUrlResultDto)
     assert result.resolved_url == "https://example.com/v?expire=4102444800"
     assert mock_ydl.extract_info.call_count == 2
+
+
+def test_resolve_url_sync_returns_hls_master_manifest_url(resolver):
+    manifest_url = "https://manifest.googlevideo.com/api/manifest/hls_variant/expire/4102444800"
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.return_value = {
+            "url": "https://example.com/progressive.mp4",
+            "requested_formats": [{"format_id": "234", "manifest_url": manifest_url}],
+        }
+
+        result = resolver._resolve_url_sync(YOUTUBE_URL, hls=HlsMode.MASTER)
+
+    assert result == manifest_url
+    options = mock_ydl_class.call_args.args[0]
+    assert options["extractor_args"]["youtube"]["skip"] == ["dash"]
+
+
+def test_resolve_url_sync_rejects_hls_master_when_manifest_is_absent(resolver):
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.return_value = {"url": "https://example.com/progressive.mp4"}
+
+        with pytest.raises(HlsMasterUnavailableError):
+            resolver._resolve_url_sync(YOUTUBE_URL, hls=HlsMode.MASTER)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "ERROR: [youtube] xxx: Private video. Sign in if you've been granted access to this video",
+        "ERROR: [youtube] xxx: Video unavailable",
+        "ERROR: [youtube] xxx: Video unavailable. This video is not available",
+        "ERROR: [youtube] xxx: Video unavailable. This video is no longer available because "
+        "the YouTube account associated with this video has been terminated",
+        "ERROR: [youtube] xxx: This video has been removed",
+        "ERROR: [youtube] xxx: The uploader has not made this video available in your country",
+    ],
+)
+async def test_resolve_url_reports_unavailable_video_for_hls_master(resolver, message):
+    download_error = yt_dlp.utils.DownloadError(message)
+    with patch.object(resolver, "_resolve_url_sync", side_effect=download_error):
+        with pytest.raises(VideoUnavailableError):
+            await resolver.resolve_url(YOUTUBE_URL, hls=HlsMode.MASTER)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "ERROR: [youtube] xxx: Video unavailable. This content isn't available, try again later",
+        "ERROR: [youtube] xxx: Video unavailable. This content is rate-limited",
+        "ERROR: [youtube] xxx: Video unavailable. Request was rate limited",
+        "ERROR: [youtube] xxx: Video unavailable. This is temporarily unavailable",
+        "ERROR: [youtube] xxx: Video unavailable. HTTP Error 429: Too Many Requests",
+        "ERROR: [youtube] xxx: Video unavailable. This video has been removed; try again later",
+        "ERROR: [youtube] xxx: Requested format is not available. "
+        "HTTP Error 429: Too Many Requests",
+        "ERROR: [youtube] xxx: Video unavailable. YouTube is requiring a captcha challenge "
+        "before playback",
+        "ERROR: [youtube] xxx: Video unavailable. Sign in to confirm you are not a bot",
+    ],
+)
+async def test_resolve_url_keeps_temporary_video_unavailable_error_as_resolver_error(
+    resolver, message
+):
+    with patch.object(
+        resolver, "_resolve_url_sync", side_effect=yt_dlp.utils.DownloadError(message)
+    ):
+        with pytest.raises(YouTubeResolverError) as exc_info:
+            await resolver.resolve_url(YOUTUBE_URL, hls=HlsMode.MASTER)
+
+    assert type(exc_info.value) is YouTubeResolverError
+
+
+@pytest.mark.parametrize("hls", [HlsMode.DISABLED, HlsMode.ENABLED])
+async def test_ytdlp_report_error_does_not_expose_secret_at_any_output_boundary(
+    resolver, capsys, caplog, monkeypatch, hls
+):
+    secret = "signature=synthetic-secret-token"
+
+    def report_error(self, _url, download):
+        self.report_error(f"synthetic yt-dlp error: {secret}")
+
+    monkeypatch.setattr(yt_dlp.YoutubeDL, "extract_info", report_error)
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(YouTubeResolverError) as exc_info:
+            await resolver.resolve_url(YOUTUBE_URL, hls=hls)
+
+    captured = capsys.readouterr()
+    assert secret not in captured.out
+    assert secret not in captured.err
+    assert secret not in caplog.text
+    assert secret not in str(exc_info.value)
+    assert "classification=other" in caplog.text
+    assert "platform=youtube" in caplog.text
+    assert "video_id=CbdWElnmJIY" in caplog.text
+
+
+def test_resolve_url_sync_rejects_untrusted_hls_master_manifest(resolver):
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.return_value = {
+            "manifest_url": "https://attacker.example/api/manifest/hls_variant/expire/4102444800"
+        }
+
+        with pytest.raises(HlsMasterUnavailableError):
+            resolver._resolve_url_sync(YOUTUBE_URL, hls=HlsMode.MASTER)
+
+
+def test_extract_ttl_from_url_reads_hls_manifest_path_expire(resolver):
+    from datetime import UTC, datetime
+
+    future_expire = int(datetime.now(UTC).timestamp()) + 3600
+    url = f"https://manifest.googlevideo.com/api/manifest/hls_variant/expire/{future_expire}/x"
+
+    ttl = resolver._extract_ttl_from_url(url, HlsMode.MASTER)
+
+    assert 3590 <= ttl <= 3600
+
+
+@pytest.mark.parametrize(
+    ("resolve_kwargs",),
+    [
+        pytest.param({}, id="hlsなし"),
+        pytest.param({"hls": HlsMode.ENABLED}, id="hls=true"),
+    ],
+)
+async def test_resolve_url_keeps_legacy_default_ttl_for_path_expire(resolver, resolve_kwargs):
+    path_expire = int(datetime.now(UTC).timestamp()) + 3600
+    stream_url = f"https://example.com/videoplayback/expire/{path_expire}/x"
+
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.return_value = {"url": stream_url}
+
+        result = await resolver.resolve_url(YOUTUBE_URL, **resolve_kwargs)
+
+    assert result.ttl_seconds == 21600
+
+
+async def test_resolve_url_uses_path_expire_for_hls_master(resolver):
+    path_expire = int(datetime.now(UTC).timestamp()) + 3600
+    manifest_url = (
+        f"https://manifest.googlevideo.com/api/manifest/hls_variant/expire/{path_expire}/x"
+    )
+
+    with patch("yt_dlp.YoutubeDL") as mock_ydl_class:
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.extract_info.return_value = {"manifest_url": manifest_url}
+
+        result = await resolver.resolve_url(YOUTUBE_URL, hls=HlsMode.MASTER)
+
+    assert 3590 <= result.ttl_seconds <= 3600
+
+
+async def test_resolve_url_does_not_assign_default_ttl_to_hls_master_without_expire(resolver):
+    manifest_url = "https://manifest.googlevideo.com/api/manifest/hls_variant/playlist.m3u8"
+    with patch.object(resolver, "_resolve_url_sync", return_value=manifest_url):
+        result = await resolver.resolve_url(YOUTUBE_URL, hls=HlsMode.MASTER)
+
+    assert result.ttl_seconds == 0
