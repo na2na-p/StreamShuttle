@@ -65,7 +65,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📋 イメージ詳細" >> $GITHUB_STEP_SUMMARY
           echo "- **プラットフォーム**: linux/amd64" >> $GITHUB_STEP_SUMMARY
-          echo "- **ベースイメージ**: python:3.14.0-slim" >> $GITHUB_STEP_SUMMARY
+          echo "- **ベースイメージ**: python:3.15.2-slim" >> $GITHUB_STEP_SUMMARY
           echo "- **コミット**: $GITHUB_SHA" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🚀 プルコマンド" >> $GITHUB_STEP_SUMMARY
