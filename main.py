@@ -109,7 +109,7 @@ async def index(request: Request):
     Returns:
         TemplateResponse: index.htmlテンプレートをレンダリングしたレスポンス
     """
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.get("/player")
@@ -127,7 +127,7 @@ async def player(request: Request):
     Returns:
         TemplateResponse: player.htmlテンプレートをレンダリングしたレスポンス
     """
-    return templates.TemplateResponse("player.html", {"request": request})
+    return templates.TemplateResponse(request, "player.html")
 
 
 @app.get("/healthz")
