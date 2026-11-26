@@ -131,7 +131,7 @@ yt-dlpでのURL解決エラー率が一定の閾値を超えた場合、監視�
 
 ### アーキテクチャ
 
-* バックエンド: Python 3.14+, FastAPI 14
+* バックエンド: Python 3.15.2+, FastAPI 14
 * コアライブラリ: yt-dlp (Pythonライブラリとして直接インポート) 17
 * フロントエンド: Jinja2テンプレート + Vanilla JavaScript
 * 静的ファイル配置: `src/streamshuttle/templates/` (HTML), `src/streamshuttle/static/` (CSS/JS)
